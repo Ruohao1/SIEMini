@@ -3,6 +3,10 @@
 
 set -e
 export DEBIAN_FRONTEND=noninteractive
+
+wget -qO - https://ose-repo.syslog-ng.com/apt/syslog-ng-ose-pub.asc | sudo apt-key add -
+deb [signed-by=/etc/apt/keyrings/syslog-ng-ose.gpg] https://ose-repo.syslog-ng.com/apt/ stable ubuntu-jammy
+
 sudo apt-get update -y
 sudo apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" upgrade
 
@@ -11,7 +15,8 @@ sudo apt-get install -y \
   libpcap-dev libdumbnet-dev libpcre2-dev zlib1g-dev \
   libssl-dev libnghttp2-dev libunwind-dev \
   libhwloc-dev luajit libluajit-5.1-dev \
-  libhyperscan-dev libflatbuffers-dev git ethtool
+  libhyperscan-dev libflatbuffers-dev git ethtool \
+  syslog-ng
 
 sudo mkdir /opt/snort3
 snort3_path=/opt/snort3
@@ -34,4 +39,5 @@ cd build
 sudo make -j $(nproc) install
 
 echo "export PATH=$snort_path/bin:$PATH" >>~/.bashrc
+
 source ~/.bashrc
