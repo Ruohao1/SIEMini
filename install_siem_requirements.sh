@@ -18,12 +18,12 @@ snort3_path=/opt/snort3
 
 sudo git clone https://github.com/snort3/libdaq.git $snort3_path/libdaq
 cd $snort3_path/libdaq
-./bootstrap
-./configure
-make
-make install
+sudo ./bootstrap
+sudo ./configure
+sudo make
+sudo make install
 
-snort_path=$snort_path/snort
+snort_path=$snort3_path/snort
 
 sudo git clone https://github.com/snort3/snort3.git $snort_path
 cd $snort_path
