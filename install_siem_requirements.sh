@@ -13,12 +13,21 @@ sudo apt-get install -y \
   libhwloc-dev luajit libluajit-5.1-dev \
   libhyperscan-dev libflatbuffers-dev git ethtool
 
-sudo git clone https://github.com/snort3/snort3.git /opt/snort
+snort3_path=/opt/snort3
 
-cd /opt/snort
-snort_path=/opt/snort
+sudo git clone https://github.com/snort3/libdaq.git $snort3_path
+cd $snort3_path/libdaq
+./bootstrap
+./configure
+make
+make install
 
-./configure_cmake.sh --prefix=$snort_path
+snort_path=$snort_path/snort
+
+sudo git clone https://github.com/snort3/snort3.git $snort_path
+cd $snort_path
+
+sudo ./configure_cmake.sh --prefix=$snort_path
 cd build
 make -j $(nproc) install
 
