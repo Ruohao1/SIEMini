@@ -22,6 +22,7 @@ sudo ./bootstrap
 sudo ./configure
 sudo make
 sudo make install
+sudo ldconfig
 
 snort_path=$snort3_path/snort
 
@@ -30,7 +31,7 @@ cd $snort_path
 
 sudo ./configure_cmake.sh --prefix=$snort_path
 cd build
-make -j $(nproc) install
+sudo make -j $(nproc) install
 
 echo "export PATH=$snort_path/bin:$PATH" >>~/.bashrc
 source ~/.bashrc
