@@ -28,7 +28,7 @@ This container will be the target of the simulated attacks, which will be runnin
 
 **Networking:**  
 
-- Use NAT or Bridged networking
+- Use NAT or Bridged networking to have access to internet to setup environments. It could be removed later.
 - Add custom virtual network (`/dev/vmnet0`), which will be used for communication between the attacker and SIEM VM.
 
 ## SIEM VM Configuration
