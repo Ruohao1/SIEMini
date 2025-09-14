@@ -13,9 +13,10 @@ sudo apt-get install -y \
   libhwloc-dev luajit libluajit-5.1-dev \
   libhyperscan-dev libflatbuffers-dev git ethtool
 
+sudo mkdir /opt/snort3
 snort3_path=/opt/snort3
 
-sudo git clone https://github.com/snort3/libdaq.git $snort3_path
+sudo git clone https://github.com/snort3/libdaq.git $snort3_path/libdaq
 cd $snort3_path/libdaq
 ./bootstrap
 ./configure
