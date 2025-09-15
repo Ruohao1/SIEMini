@@ -89,6 +89,50 @@ export PATH="$SNORT_PREFIX/bin:$PATH"
 sudo systemctl disable --now rsyslog 2>/dev/null || true
 sudo systemctl enable --now syslog-ng
 
+if ! command -v docker >/dev/null 2>&1; then
+  curl -fsSL https://get.docker.com/ | sh
+fi
+if ! id -nG "$USER" | grep -qw docker; then
+  sudo usermod -aG docker "$USER"
+  newgrp docker
+fi
+
+ELASTIC_DIR="/opt/elastic-start-local"
+ES_NAME="es-local-dev"
+KB_NAME="kibana-local-dev"
+
+if docker ps --format '{{.Names}}' | grep -Eq "^($ES_NAME|$KB_NAME)$"; then
+  echo "[*] Elastic local already running."
+else
+  # 2) Exists but stopped? start.
+  if docker ps -a --format '{{.Names}}' | grep -Eq "^($ES_NAME|$KB_NAME)$"; then
+    docker start "$ES_NAME" 2>/dev/null || true
+    docker start "$KB_NAME" 2>/dev/null || true
+  else
+    # 3) No containers yet → ensure compose files exist
+    if [ ! -f "$ELASTIC_DIR/docker-compose.yml" ]; then
+      # The script creates ./elastic-local under the current dir
+      (cd /opt && curl -fsSL https://elastic.co/start-local | sh)
+      # If it created /opt/elastic-local and you want /opt/elastic-start-local, rename once
+      if [ -d /opt/elastic-local ] && [ "$ELASTIC_DIR" != "/opt/elastic-local" ]; then
+        mv /opt/elastic-local "$ELASTIC_DIR"
+      fi
+    fi
+
+    if grep -q '127\.0\.0\.1:' "$ELASTIC_DIR/docker-compose.yml"; then
+      sed -i 's/127\.0\.0\.1:/0.0.0.0:/g' "$ELASTIC_DIR/docker-compose.yml"
+    fi
+
+    if docker compose version >/dev/null 2>&1; then
+      (cd "$ELASTIC_DIR" && docker compose up -d)
+    else
+      (cd "$ELASTIC_DIR" && docker-compose up -d)
+    fi
+  fi
+fi
+
 log "Versions:"
 snort -V || true
 syslog-ng --version || true
+curl -fsS http://127.0.0.1:9200 >/dev/null && echo "[*] Elasticsearch responding on 9200"
+curl -fsS http://127.0.0.1:5601 >/dev/null && echo "[*] Kibana responding on 5601"
