@@ -1,0 +1,12 @@
+services:
+  target-web:
+    build: .
+    image: target-web:latest
+    container_name: target-web
+    environment:
+      SIEM_HOST: "10.10.10.20"     # <- replace with your SIEM VM IP
+      SIEM_PORT: "514"
+      SECRET_ADMIN_TOKEN: "changeme"
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
