@@ -30,7 +30,7 @@ done
 case "$HOST" in
 web)
   echo "Running web server setup..."
-  ./web/setup_web.sh
+  ./web/setup.sh
   ;;
 siem)
   echo "Running SIEM setup..."
