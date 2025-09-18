@@ -1,48 +1,76 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
-# Parse options
-OPTS=$(getopt -o h: --long host: -- "$@") || {
-  echo "Error parsing options"
-  exit 2
-}
-eval set -- "$OPTS"
+# Default env file (optional)
+ENVFILE=".env"
 
+usage() {
+  cat <<EOF
+Usage: $0 --host <web|siem|attacker> [--user <user>] [--env <envfile>]
+Examples:
+  $0 --host web --user alice
+  $0 --host siem
+  $0 --host attacker --env .env.siem
+EOF
+  exit 1
+}
+
+# Simple arg parsing
 HOST=""
-while true; do
+USER=""
+while [[ $# -gt 0 ]]; do
   case "$1" in
-  -h | --host)
+  --host)
     HOST="$2"
     shift 2
     ;;
-  --)
-    shift
-    break
+  --user)
+    USER="$2"
+    shift 2
     ;;
+  --env)
+    ENVFILE="$2"
+    shift 2
+    ;;
+  -h | --help) usage ;;
   *)
-    echo "Parse error"
-    exit 3
+    echo "Unknown argument: $1"
+    usage
     ;;
   esac
 done
 
-# Dispatch
+# Load env file if it exists
+if [[ -n "${ENVFILE:-}" && -f "$ENVFILE" ]]; then
+  set -a
+  source "$ENVFILE"
+  set +a
+fi
+
+# Basic validation
+if [[ -z "${HOST:-}" ]]; then
+  echo "Missing --host option."
+  usage
+fi
+
 case "$HOST" in
 web)
+  # user is required for web
+  if [[ -z "${USER:-}" ]]; then
+    echo "Missing --user for host 'web'. Use: --user <user>"
+    exit 1
+  fi
   echo "Running web server setup..."
-  cd web && ./setup.sh
+  (cd web && ./setup.sh "$USER")
   ;;
 siem)
   echo "Running SIEM setup..."
-  cd siem && ./setup.sh
+  (cd siem && ./setup.sh)
   ;;
 attacker)
   echo "Running attacker VM setup..."
-  ./setup_attacker.sh
-  ;;
-"")
-  echo "Missing --host option. Usage: $0 --host <web|siem|attacker>"
-  exit 1
+  # optionally you might want to cd into attacker/ if setup script is inside that dir:
+  (cd attacker && ./setup.sh)
   ;;
 *)
   echo "Unknown host: $HOST"

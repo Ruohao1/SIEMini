@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # This script installs the necessary SIEM requirements on Ubuntu 22.04
 
+source ../.env
+
 set -Eeuo pipefail
 IFS=$'\n\t'
 
@@ -104,16 +106,12 @@ KB_NAME="kibana-local-dev"
 if docker ps --format '{{.Names}}' | grep -Eq "^($ES_NAME|$KB_NAME)$"; then
   echo "[*] Elastic local already running."
 else
-  # 2) Exists but stopped? start.
   if docker ps -a --format '{{.Names}}' | grep -Eq "^($ES_NAME|$KB_NAME)$"; then
     docker start "$ES_NAME" 2>/dev/null || true
     docker start "$KB_NAME" 2>/dev/null || true
   else
-    # 3) No containers yet → ensure compose files exist
     if [ ! -f "$ELASTIC_DIR/docker-compose.yml" ]; then
-      # The script creates ./elastic-local under the current dir
       (cd /opt && curl -fsSL https://elastic.co/start-local | sh)
-      # If it created /opt/elastic-local and you want /opt/elastic-start-local, rename once
       if [ -d /opt/elastic-local ] && [ "$ELASTIC_DIR" != "/opt/elastic-local" ]; then
         mv /opt/elastic-local "$ELASTIC_DIR"
       fi
@@ -131,8 +129,22 @@ else
   fi
 fi
 
+sudo tee /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg >/dev/null <<'EOF'
+network: {config: disabled}
+EOF
+export HOST_IP="$SIEM_HOST"
+envsubst <../netplan.template.yml | sudo tee /etc/netplan/01-network-manager-all.yaml >/dev/null
+sudo netplan apply
+
+sudo mkdir -p /etc/syslog-ng/certs
+cd /etc/syslog-ng/certs
+sudo openssl req -x509 -newkey rsa:3072 -keyout ca.key -out ca.crt -days 3650 -nodes -subj "/CN=syslog-CA"
+sudo openssl req -newkey rsa:3072 -keyout server.key -out server.csr -nodes -subj "/CN=$(hostname -f)"
+sudo openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt -days 1825
+sudo chmod 640 server.key
+
 log "Versions:"
 snort -V || true
 syslog-ng --version || true
 curl -fsS http://127.0.0.1:9200 >/dev/null && echo "[*] Elasticsearch responding on 9200"
-curl -fsS http://127.0.0.1:5601 >/dev/null && echo "[*] Kibana responding on 5601"
+curl -fsS http://127.0.0.1:$KIBANA_PORT >/dev/null && echo "[*] Kibana responding on 5601"
