@@ -1,0 +1,46 @@
+---
+- name: Check if ES/KB containers running
+  command: docker ps --format '{{"{{"}}.Names{{"}}"}}'
+  register: docker_ps
+  changed_when: false
+
+- name: Check if ES/KB containers exist (stopped)
+  command: docker ps -a --format '{{"{{"}}.Names{{"}}"}}'
+  register: docker_ps_a
+  changed_when: false
+
+- name: Start ES/KB if already created
+  shell: |
+    docker start "{{ es_name }}" || true
+    docker start "{{ kb_name }}" || true
+  when: >
+    (es_name in docker_ps_a.stdout_lines or kb_name in docker_ps_a.stdout_lines)
+    and not (es_name in docker_ps.stdout_lines or kb_name in docker_ps.stdout_lines)
+
+- name: Bootstrap Elastic local if compose file missing
+  shell: |
+    (cd /opt && curl -fsSL https://elastic.co/start-local | sh)
+    if [ -d /opt/elastic-local ] && [ "{{ elastic_dir }}" != "/opt/elastic-local" ]; then
+      mv /opt/elastic-local "{{ elastic_dir }}"
+    fi
+  args:
+    creates: "{{ elastic_dir }}/docker-compose.yml"
+
+- name: Ensure Elastic binds to 0.0.0.0
+  replace:
+    path: "{{ elastic_dir }}/docker-compose.yml"
+    regexp: '127\.0\.0\.1:'
+    replace: '0.0.0.0:'
+
+- name: Ensure docker compose is up
+  community.docker.docker_compose_v2:
+    project_src: "{{ elastic_dir }}"
+    state: present
+  failed_when: false
+  register: compose_v2
+
+- name: Fallback to legacy docker-compose if needed
+  command: docker-compose up -d
+  args:
+    chdir: "{{ elastic_dir }}"
+  when: compose_v2 is failed

@@ -1,0 +1,60 @@
+---
+- name: Download syslog-ng repo key (ASCII)
+  get_url:
+    url: https://ose-repo.syslog-ng.com/apt/syslog-ng-ose-pub.asc
+    dest: /tmp/syslog-ng-ose.asc
+    mode: '0644'
+
+- name: Convert syslog-ng key to dearmored keyring (idempotent)
+  command: >
+    gpg --dearmor -o "{{ syslogng_keyring }}" /tmp/syslog-ng-ose.asc
+  args:
+    creates: "{{ syslogng_keyring }}"
+
+- name: Add syslog-ng APT repo
+  copy:
+    dest: "{{ syslogng_list }}"
+    content: |
+      deb [signed-by={{ syslogng_keyring }}] https://ose-repo.syslog-ng.com/apt/ stable ubuntu-jammy
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Ensure /etc/apt/keyrings exists
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Install build and runtime packages
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items: "{{ apt_dependencies }}"
+
+- name: Ensure docker engine is installed
+  block:
+    - name: Check if docker command exists
+      command: which docker
+      register: docker_exists
+      changed_when: false
+      failed_when: false
+
+    - name: Install Docker using get.docker.com
+      shell: curl -fsSL https://get.docker.com/ | sh
+      when: docker_exists.rc != 0
+
+    - name: Ensure docker group exists
+      group:
+        name: docker
+        state: present
+
+    - name: Add current user to docker group
+      user:
+        name: "{{ ansible_user_id }}"
+        groups: docker
+        append: true
+
+

@@ -1,0 +1,19 @@
+all:
+  children:
+    siem:
+      hosts:
+        siem1:
+          ansible_host: 192.168.2.100
+          ansible_user: siem
+
+    target:
+      hosts:
+        target1:
+          ansible_host: 192.168.2.200
+          ansible_user: target
+
+    attacker:
+      hosts:
+        attacker1:
+          ansible_host: 192.168.2.150
+          ansible_user: attacker

@@ -1,0 +1,16 @@
+#SPDX-License-Identifier: MIT-0
+---
+- name: Install dependencies
+  import_tasks: tasks/install_dependencies.yml
+
+- name: Install Snort3
+  import_tasks: tasks/install_snort3.yml
+
+- name: Install ElasticSearch
+  import_tasks: tasks/install_elastic_search.yml
+
+- name: Configure syslog-ng
+  import_tasks: tasks/configure_syslog_ng.yml
+
+
+

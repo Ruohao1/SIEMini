@@ -1,0 +1,47 @@
+#SPDX-License-Identifier: MIT-0
+---
+snort_base: /opt/snort3
+snort_prefix: "{{ snort_base }}/snort"
+libdaq_prefix: /usr/local
+
+syslogng_keyring: /etc/apt/keyrings/syslog-ng-ose.gpg
+syslogng_list: /etc/apt/sources.list.d/syslog-ng-ose.list
+
+elastic_dir: /opt/elastic-start-local
+es_name: es-local-dev
+kb_name: kibana-local-dev
+
+apt_dependencies:
+  - build-essential
+  - cmake
+  - make
+  - gcc
+  - g++
+  - flex
+  - bison
+  - pkg-config
+  - git
+  - ethtool
+  - libpcap-dev
+  - libdumbnet-dev
+  - libpcre2-dev
+  - zlib1g-dev
+  - libssl-dev
+  - libnghttp2-dev
+  - libunwind-dev
+  - libhwloc-dev
+  - luajit
+  - libluajit-5.1-dev
+  - libhyperscan-dev
+  - libflatbuffers-dev
+  - autoconf
+  - automake
+  - libtool
+  - syslog-ng
+  - syslog-ng-core
+  - syslog-ng-mod-http
+  - syslog-ng-scl
+
+# From group_vars/all.yml (see below):
+# siem_host: 10.0.0.10
+# kibana_port: 5601
