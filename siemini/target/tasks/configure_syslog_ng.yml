@@ -1,0 +1,17 @@
+---
+- name: Configure syslog-ng forwarding for Apache logs
+  copy:
+    dest: /etc/syslog-ng/conf.d/apache-forward.conf
+    mode: "0644"
+    content: |
+      # Source: tail Apache access & error logs
+      source s_apache {
+        file("{{ apache_logs_dir }}/{{ vhost_name }}-access.log" follow-freq(1));
+        file("{{ apache_logs_dir }}/{{ vhost_name }}-error.log"  follow-freq(1));
+      };
+
+      # Destination: forward to SIEM over TCP
+      destination d_siem { tcp("{{ siem_ip }}" port({{ syslog_port }})); };
+
+      log { source(s_apache); destination(d_siem); };
+  notify: Restart syslog-ng

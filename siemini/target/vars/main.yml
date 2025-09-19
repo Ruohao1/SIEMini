@@ -2,7 +2,18 @@
 ---
 app_dir: /opt/juice-shop
 
+siem_ip: "192.168.2.100"
+juice_listen_port: "3000"
+vhost_name: "juice"
+apache_logs_dir: "/var/log/apache2"
+syslog_port: 514
+
+syslogng_keyring: /etc/apt/keyrings/syslog-ng-ose.gpg
+syslogng_list: /etc/apt/sources.list.d/syslog-ng-ose.list
+
 apt_dependencies:
   - build-essential
   - curl
   - git
+  - apache2
+  - syslog-ng

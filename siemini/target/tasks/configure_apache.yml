@@ -1,0 +1,39 @@
+---
+- name: Enable Apache modules (proxy, proxy_http, headers)
+  command: a2enmod {{ item }}
+  args:
+    creates: "/etc/apache2/mods-enabled/{{ item }}.load"
+  loop:
+    - proxy
+    - proxy_http
+    - headers
+  notify: Reload Apache
+
+- name: Create Juice Shop reverse-proxy vhost
+  copy:
+    dest: "/etc/apache2/sites-available/{{ vhost_name }}.conf"
+    mode: "0644"
+    content: |
+      <VirtualHost *:80>
+        ServerName _
+
+        ProxyPreserveHost On
+        ProxyPass        / http://127.0.0.1:{{ juice_listen_port }}/
+        ProxyPassReverse / http://127.0.0.1:{{ juice_listen_port }}/
+
+        ErrorLog  {{ apache_logs_dir }}/{{ vhost_name }}-error.log
+        CustomLog {{ apache_logs_dir }}/{{ vhost_name }}-access.log combined
+      </VirtualHost>
+  notify: Reload Apache
+
+- name: Enable vhost
+  command: a2ensite {{ vhost_name }}.conf
+  args:
+    creates: "/etc/apache2/sites-enabled/{{ vhost_name }}.conf"
+  notify: Reload Apache
+
+- name: Ensure default site is disabled
+  command: a2dissite 000-default.conf
+  args:
+    removes: "/etc/apache2/sites-enabled/000-default.conf"
+  notify: Reload Apache

@@ -25,11 +25,8 @@
       [Service]
       WorkingDirectory=/opt/juice-shop
       ExecStart=/usr/bin/versions/node/v22.19.0/bin/node \
-        /usr/bin/versions/node/v22.19.0/lib/node_modules/npm/bin/npm-cli.js start
-      Environment=HOST=0.0.0.0
-      Environment=PORT=3000
+        /usr/bin/versions/node/v22.19.0/lib/node_modules/npm/bin/npm-cli.js start -- --host=127.0.0.
       Environment=NODE_ENV=production
-      Environment=HOME=/home/target
       Environment=PATH=/usr/bin/versions/node/v22.19.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
       User=root
       Group=root

@@ -1,56 +1,13 @@
----
-- name: Configure syslog-ng
-  block:
-    - name: Disable and stop rsyslog
-      service:
-        name: rsyslog
-        state: stopped
-        enabled: false
-      failed_when: false
+- name: Configure syslog-ng to listen on TCP/514 and write to a file
+  copy:
+    dest: /etc/syslog-ng/conf.d/10-recv-apache.conf
+    mode: "0644"
+    content: |
+      # Listen on all interfaces for web VM logs
+      source s_net { tcp(ip("0.0.0.0") port({{ syslog_port }})); };
 
-    - name: Enable and start syslog-ng
-      service:
-        name: syslog-ng
-        state: started
-        enabled: true
+      # For quick validation; swap this for Elasticsearch/Logstash later
+      destination d_apache { file("/var/log/siem/apache.log"); };
 
-# ----- TLS certs for syslog-ng -----
-- name: Ensure cert directory
-  file:
-    path: /etc/syslog-ng/certs
-    state: directory
-    owner: root
-    group: root
-    mode: '0755'
-
-- name: Create local CA key and certificate
-  community.crypto.x509_certificate:
-    path: /etc/syslog-ng/certs/ca.crt
-    privatekey_path: /etc/syslog-ng/certs/ca.key
-    privatekey_type: RSA
-    privatekey_bits: 3072
-    provider: selfsigned
-    subject:
-      common_name: syslog-CA
-    valid_days: 3650
-    mode: '0644'
-    privatekey_mode: '0640'
-
-- name: Create server key and CSR
-  community.crypto.x509_certificate:
-    path: /etc/syslog-ng/certs/server.csr
-    privatekey_path: /etc/syslog-ng/certs/server.key
-    privatekey_type: RSA
-    privatekey_bits: 3072
-    common_name: "{{ ansible_fqdn }}"
-    privatekey_mode: '0640'
-
-- name: Sign server certificate with local CA
-  community.crypto.x509_certificate:
-    path: /etc/syslog-ng/certs/server.crt
-    csr_path: /etc/syslog-ng/certs/server.csr
-    provider: ownca
-    ownca_path: /etc/syslog-ng/certs/ca.crt
-    ownca_privatekey_path: /etc/syslog-ng/certs/ca.key
-    valid_days: 1825
-    mode: '0644'
+      log { source(s_net); destination(d_apache); };
+  notify: Restart syslog-ng

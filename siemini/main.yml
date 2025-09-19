@@ -26,7 +26,7 @@
 
     - name: Check Kibana port
       uri:
-        url: "http://127.0.0.1:{{ kibana_port }}"
+        url: "http://127.0.0.1:5601"
         status_code: 200
       register: kb_health
       failed_when: false

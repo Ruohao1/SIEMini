@@ -5,15 +5,19 @@ all:
         siem1:
           ansible_host: 192.168.2.100
           ansible_user: siem
+          ansible_password: siem
 
     target:
       hosts:
         target1:
           ansible_host: 192.168.2.200
           ansible_user: target
+          ansible_password: target
 
     attacker:
       hosts:
         attacker1:
           ansible_host: 192.168.2.150
           ansible_user: attacker
+          ansible_password: attacker
+

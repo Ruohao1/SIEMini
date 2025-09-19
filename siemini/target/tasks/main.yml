@@ -9,3 +9,5 @@
 - name: Configure Apache
   include_tasks: configure_apache.yml
 
+- name: Configure syslog-ng
+  include_tasks: configure_syslog_ng.yml

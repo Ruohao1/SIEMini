@@ -3,3 +3,9 @@
 - name: Run ldconfig
   command: ldconfig
 
+- name: Restart syslog-ng
+  service:
+    name: syslog-ng
+    state: restarted
+    enabled: true
+  listen: Restart syslog-ng

@@ -1,8 +1,15 @@
 #SPDX-License-Identifier: MIT-0
 ---
 # handlers file for target
-- name: Restart juice-shop
-  systemd:
-    name: juice-shop
+- name: Reload Apache
+  service:
+    name: apache2
+    state: reloaded
+  listen: Reload Apache
+
+- name: Restart syslog-ng
+  service:
+    name: syslog-ng
     state: restarted
-    daemon_reload: yes
+    enabled: true
+  listen: Restart syslog-ng

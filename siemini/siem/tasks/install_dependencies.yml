@@ -28,6 +28,10 @@
     group: root
     mode: '0755'
 
+- name: Update package
+  ansible.builtin.package:
+    update_cache: yes
+
 - name: Install build and runtime packages
   apt:
     name: "{{ item }}"
