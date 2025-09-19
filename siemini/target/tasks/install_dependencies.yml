@@ -1,0 +1,43 @@
+---
+- name: Install package dependencies
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  with_items: "{{ apt_dependencies }}"
+
+- name: Download and install nvm
+  shell: |
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+  args:
+    creates: "{{ ansible_env.HOME }}/.nvm/nvm.sh"
+
+- name: Source nvm in current shell
+  shell: . "{{ ansible_env.HOME }}/.nvm/nvm.sh"
+  args:
+    executable: /bin/bash
+
+- name: Install Node.js v22
+  shell: |
+    . "{{ ansible_env.HOME }}/.nvm/nvm.sh"
+    nvm install 22
+  args:
+    creates: "{{ ansible_env.HOME }}/.nvm/versions/node/v22.19.0"
+
+- name: Verify Node.js version
+  shell: |
+    . "{{ ansible_env.HOME }}/.nvm/nvm.sh"
+    node -v
+  register: node_version
+
+- debug:
+    msg: "Node.js version installed: {{ node_version.stdout }}"
+
+- name: Verify npm version
+  shell: |
+    . "{{ ansible_env.HOME }}/.nvm/nvm.sh"
+    npm -v
+  register: npm_version
+
+- debug:
+    msg: "NPM version installed: {{ npm_version.stdout }}"
+

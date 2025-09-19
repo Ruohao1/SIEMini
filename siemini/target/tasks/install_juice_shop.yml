@@ -1,0 +1,49 @@
+---
+- name: Clone Juice Shop
+  git:
+    repo: https://github.com/juice-shop/juice-shop.git
+    dest: "{{ app_dir }}"
+    version: master
+    depth: 1
+
+- name: Install npm dependencies
+  command: "npm install"
+  args:
+    chdir: "{{ app_dir }}"
+  environment:
+    PATH: "/usr/bin/versions/node/v22.19.0/bin/:{{ ansible_env.PATH }}"
+
+- name: Create systemd unit
+  copy:
+    dest: /etc/systemd/system/juice-shop.service
+    content: |
+      [Unit]
+      Description=OWASP Juice Shop
+      After=network-online.target
+      Wants=network-online.target
+
+      [Service]
+      WorkingDirectory=/opt/juice-shop
+      ExecStart=/usr/bin/versions/node/v22.19.0/bin/node \
+        /usr/bin/versions/node/v22.19.0/lib/node_modules/npm/bin/npm-cli.js start
+      Environment=HOST=0.0.0.0
+      Environment=PORT=3000
+      Environment=NODE_ENV=production
+      Environment=HOME=/home/target
+      Environment=PATH=/usr/bin/versions/node/v22.19.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
+      User=root
+      Group=root
+      Restart=always
+      RestartSec=3
+      LimitNOFILE=65536
+
+      [Install]
+      WantedBy=multi-user.target
+  notify: Restart juice-shop
+
+- name: Enable and start service
+  systemd:
+    name: juice-shop
+    state: started
+    enabled: yes
+    daemon_reload: yes

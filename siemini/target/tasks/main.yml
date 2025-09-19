@@ -1,3 +1,11 @@
 #SPDX-License-Identifier: MIT-0
 ---
-# tasks file for target
+- name: Install dependencies
+  include_tasks: install_dependencies.yml
+
+- name: Install Juice Shop
+  include_tasks: install_juice_shop.yml
+  
+- name: Configure Apache
+  include_tasks: configure_apache.yml
+
