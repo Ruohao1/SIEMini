@@ -1,3 +1,8 @@
+- name: Ensure /var/log/siem exists
+  file:
+    path: /var/log/siem
+    state: directory
+
 - name: Configure syslog-ng to listen on TCP/514 and write to a file
   copy:
     dest: /etc/syslog-ng/conf.d/10-recv-apache.conf
@@ -8,6 +13,5 @@
 
       # For quick validation; swap this for Elasticsearch/Logstash later
       destination d_apache { file("/var/log/siem/apache.log"); };
-
       log { source(s_net); destination(d_apache); };
   notify: Restart syslog-ng

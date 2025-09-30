@@ -1,36 +1,37 @@
 ---
-- name: Download syslog-ng repo key (ASCII)
-  get_url:
-    url: https://ose-repo.syslog-ng.com/apt/syslog-ng-ose-pub.asc
-    dest: /tmp/syslog-ng-ose.asc
-    mode: '0644'
+- name: Check if syslog-ng repo list exists
+  ansible.builtin.stat:
+    path: "{{ syslogng_list }}"
+  register: syslogng_list_stat
 
-- name: Convert syslog-ng key to dearmored keyring (idempotent)
-  command: >
-    gpg --dearmor -o "{{ syslogng_keyring }}" /tmp/syslog-ng-ose.asc
-  args:
-    creates: "{{ syslogng_keyring }}"
+- name: Install syslog-ng repo (idempotent)
+  when: not syslogng_list_stat.stat.exists
+  become: true
+  block:
+    - name: Download syslog-ng repo key (ASCII)
+      ansible.builtin.get_url:
+        url: https://ose-repo.syslog-ng.com/apt/syslog-ng-ose-pub.asc
+        dest: /tmp/syslog-ng-ose.asc
+        mode: '0644'
 
-- name: Add syslog-ng APT repo
-  copy:
-    dest: "{{ syslogng_list }}"
-    content: |
-      deb [signed-by={{ syslogng_keyring }}] https://ose-repo.syslog-ng.com/apt/ stable ubuntu-jammy
-    owner: root
-    group: root
-    mode: '0644'
+    - name: Convert syslog-ng key to dearmored keyring
+      ansible.builtin.command:
+        cmd: "gpg --dearmor -o {{ syslogng_keyring }} /tmp/syslog-ng-ose.asc"
+      args:
+        creates: "{{ syslogng_keyring }}"
 
-- name: Ensure /etc/apt/keyrings exists
-  file:
-    path: /etc/apt/keyrings
-    state: directory
-    owner: root
-    group: root
-    mode: '0755'
+    - name: Add syslog-ng APT repo
+      ansible.builtin.copy:
+        dest: "{{ syslogng_list }}"
+        content: |
+          deb [signed-by={{ syslogng_keyring }}] https://ose-repo.syslog-ng.com/apt/ stable ubuntu-{{ ubuntu_codename }}
+        owner: root
+        group: root
+        mode: '0644'
 
-- name: Update package
-  ansible.builtin.package:
-    update_cache: yes
+    - name: Update package
+      ansible.builtin.package:
+        update_cache: yes
 
 - name: Install package dependencies
   ansible.builtin.package:

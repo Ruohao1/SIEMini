@@ -32,6 +32,20 @@
     regexp: '127\.0\.0\.1:'
     replace: '0.0.0.0:'
 
+- name: Ensure restart policy is unless-stopped
+  ansible.builtin.lineinfile:
+    path: "{{ elastic_dir }}/docker-compose.yml"
+    line: '    restart: "unless-stopped"'
+    insertafter: '  elasticsearch:\n'
+    state: present
+
+- name: Ensure restart policy is unless-stopped
+  ansible.builtin.lineinfile:
+    path: "{{ elastic_dir }}/docker-compose.yml"
+    line: '    restart: "unless-stopped"'
+    insertafter: '  kibana:\n'
+    state: present
+
 - name: Ensure docker compose is up
   community.docker.docker_compose_v2:
     project_src: "{{ elastic_dir }}"
