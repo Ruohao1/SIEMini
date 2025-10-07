@@ -36,14 +36,14 @@
   ansible.builtin.lineinfile:
     path: "{{ elastic_dir }}/docker-compose.yml"
     line: '    restart: "unless-stopped"'
-    insertafter: '  elasticsearch:\n'
+    insertafter: 'container_name: ${KIBANA_LOCAL_CONTAINER_NAME}'
     state: present
 
 - name: Ensure restart policy is unless-stopped
   ansible.builtin.lineinfile:
     path: "{{ elastic_dir }}/docker-compose.yml"
     line: '    restart: "unless-stopped"'
-    insertafter: '  kibana:\n'
+    insertafter: 'container_name: ${ES_LOCAL_CONTAINER_NAME}'
     state: present
 
 - name: Ensure docker compose is up
