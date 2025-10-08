@@ -24,7 +24,7 @@
       ansible.builtin.copy:
         dest: "{{ syslogng_list }}"
         content: |
-          deb [signed-by={{ syslogng_keyring }}] https://ose-repo.syslog-ng.com/apt/ stable ubuntu-{{ ubuntu_codename }}
+          deb [signed-by={{ syslogng_keyring }}] https://ose-repo.syslog-ng.com/apt/ stable ubuntu-jammy
         owner: root
         group: root
         mode: '0644'
@@ -55,7 +55,7 @@
     . "{{ ansible_env.HOME }}/.nvm/nvm.sh"
     nvm install 22
   args:
-    creates: "{{ ansible_env.HOME }}/.nvm/versions/node/v22.19.0"
+    creates: "{{ ansible_env.HOME }}/.nvm/versions/node/v22.20.0"
 
 - name: Verify Node.js version
   shell: |

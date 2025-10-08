@@ -52,7 +52,7 @@
 - name: Enable and start juice-shop
   ansible.builtin.systemd:
     name: juice-shop
-    state: started
+    state: restarted
     enabled: yes
     daemon_reload: yes
 

@@ -1,5 +1,0 @@
-ansible_user: target
-ansible_password: "target"
-ansible_become: true
-ansible_become_method: sudo
-ansible_become_password: "target"

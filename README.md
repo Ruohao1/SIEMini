@@ -32,18 +32,9 @@ This VM will be used as the target for the simulated attacks. We will use the [U
 - Use a custom virtual network (`/dev/vmnet0`). We will use static IP addresses to simplify networking configuration.
 - Add NAT or Bridged networking to have access to internet to setup environments. It could be removed later.
 
-## SIEM VM Configuration
-
-You can run the installation script to configure the SIEM VM. It will install the necessary packages and configure the necessary services.
+## VM Configuration
 
 ```bash
-./setup.sh --host siem 
-```
-
-## Target VM Configuration
-
-You can run the installation script to configure the Target VM. It will install the web server and expose it on port 8080
-
-```bash
-./setup.sh --host web
+pip install -r requirements.txt
+python main.py setup
 ```
