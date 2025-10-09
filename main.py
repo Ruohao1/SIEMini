@@ -3,6 +3,7 @@ import typer
 from src.setter import setter
 from src.consts import HOSTS_INI
 from src.utils import ensure_dirs, load_meta
+from src.wizard import setup_wizard
 
 app = typer.Typer()
 app.add_typer(setter, name="set", help="Set or update a host entry")
@@ -33,6 +34,12 @@ def show_inventory():
         typer.echo(HOSTS_INI.read_text())
     else:
         typer.echo("(hosts.ini not yet generated)")
+
+
+@app.command("setup")
+def setup():
+    """Run interactive wizard to create/update the inventory."""
+    setup_wizard()
 
 
 if __name__ == "__main__":

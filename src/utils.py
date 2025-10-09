@@ -42,28 +42,30 @@ def save_meta(meta: Dict[str, Any]):
 
 def render_hosts_ini(meta: Dict[str, Any]):
     """
-    Build a simple hosts.ini grouped by host type (siem/target/attacker).
+    Build a simple hosts.ini grouped by host type (siems/targets/attackers).
     Each meta entry: {name: {ip, ansible_user, ssh_key (optional)}}
     """
     lines = []
     # order groups for predictability
-    for group in ("siem", "target", "attacker"):
+    for group in ("siems", "targets", "attackers"):
         if group in meta:
             lines.append(f"[{group}]")
             entry = meta[group]
-            ip = entry.get("ip")
-            if not ip:
-                continue
-            parts = [ip]
-            user = entry.get("ansible_user")
-            if user:
-                parts.append(f"ansible_user={user}")
-            ssh_key = entry.get("ssh_key")
-            if ssh_key:
-                parts.append(f"ansible_ssh_private_key_file={ssh_key}")
-            # if using password-only (no key), don't write password in hosts.ini
-            lines.append(" ".join(parts))
-            lines.append("")
+            for host_name, host_data in entry.items():
+                parts = [host_name]
+                ip = host_data.get("ip")
+                if not ip:
+                    continue
+                parts.append(f"ansible_host={ip}")
+                user = host_data.get("ansible_user")
+                if user:
+                    parts.append(f"ansible_user={user}")
+                ssh_key = host_data.get("ssh_key")
+                if ssh_key:
+                    parts.append(f"ansible_ssh_private_key_file={ssh_key}")
+                # if using password-only (no key), don't write password in hosts.ini
+                lines.append(" ".join(parts))
+                lines.append("")
     HOSTS_INI.write_text("\n".join(lines).strip() + "\n")
 
 

@@ -93,18 +93,19 @@ def add_many(
     while True:
         name = ask(f"{group} name", default_name)
         ip = ask(f"IP/hostname for {name}")
-        auth = choose_auth(ip, default_user)
+        user = ask(f"Default user for {name}", default_user)
+        auth = choose_auth(ip, user)
 
         entry = {"ip": ip, **auth}
 
         # allow a few group-specific extra questions
-        if group == "target":
+        if group == "targets":
             web_port = ask("Target web port", str(DEFAULTS["target"]["web_port"]))
             ssh_port = ask("Target SSH port", str(DEFAULTS["target"]["ssh_port"]))
             entry["web_port"] = int(web_port)
             entry["ssh_port"] = int(ssh_port)
 
-        if group == "siem":
+        if group == "siems":
             entry["syslog_ng_port"] = DEFAULTS["siem"]["syslog_ng_port"]
             entry["elasticsearch_port"] = DEFAULTS["siem"]["elasticsearch_port"]
             entry["kibana_port"] = DEFAULTS["siem"]["kibana_port"]
@@ -133,15 +134,15 @@ def setup_wizard():
 
     # SIEM(s)
     if yesno("Configure SIEM hosts?", True):
-        add_many("siem", "siem01", DEFAULTS["siem"]["ansible_user"], meta)
+        add_many("siems", "siem01", DEFAULTS["siem"]["ansible_user"], meta)
 
     # Target(s)
     if yesno("Configure TARGET hosts?", True):
-        add_many("target", "web01", DEFAULTS["target"]["ansible_user"], meta)
+        add_many("targets", "web01", DEFAULTS["target"]["ansible_user"], meta)
 
     # Attacker(s)
     if yesno("Configure ATTACKER hosts?", True):
-        add_many("attacker", "kali01", DEFAULTS["attacker"]["ansible_user"], meta)
+        add_many("attackers", "kali01", DEFAULTS["attacker"]["ansible_user"], meta)
 
     # Final confirmation
     typer.secho("\nSummary to be written:", fg=typer.colors.MAGENTA)

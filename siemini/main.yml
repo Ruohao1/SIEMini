@@ -1,6 +1,6 @@
 ---
 - name: Configure SIEM
-  hosts: siem
+  hosts: siems
   become: true
   roles:
     - siem
@@ -41,7 +41,7 @@
 
 
 - name: Configure Target
-  hosts: target
+  hosts: targets
   become: true
   roles:
     - target
@@ -65,7 +65,7 @@
           - "syslog-ng: {{ (syslog_ver.stdout_lines | default([])) | join(' ') | default('N/A') }}"
 
 - name: Configure Attacker
-  hosts: attacker
+  hosts: attackers
   become: true
   roles:
     - attacker
