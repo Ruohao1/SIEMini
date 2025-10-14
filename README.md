@@ -21,11 +21,11 @@ This VM will be used as the target for the simulated attacks. We will use the [U
 
 ### VM Specifications  
 
-| VM / Container      | vCPU | RAM   | Disk Size | IPv4 |
-|--------------------|------|------|-----------| --- |
-| **SIEM VM**        | 4    | 8 GB | 40–60 GB  | 192.168.2.100 |
-| **Attacker VM**    | 2    | 2 GB | 20 GB     | 192.168.2.150 |
-| **Target VM**    | 2    | 2 GB | 20 GB     | 192.168.2.200 |
+| VM / Container      | vCPU | RAM   | Disk Size |
+|--------------------|------|------|-----------|
+| **SIEM VM**        | 4    | 8 GB | 40–60 GB  |
+| **Attacker VM**    | 2    | 2 GB | 20 GB     |
+| **Target VM**    | 2    | 2 GB | 20 GB     |
 
 **Networking:**  
 
@@ -33,6 +33,8 @@ This VM will be used as the target for the simulated attacks. We will use the [U
 - Add NAT or Bridged networking to have access to internet to setup environments. It could be removed later.
 
 ## VM Configuration
+
+Use a Python virtual environment and install the required dependencies.
 
 ```bash
 pip install -r requirements.txt

@@ -9,3 +9,22 @@
     state: restarted
     enabled: true
   listen: Restart syslog-ng
+
+- name: systemd daemon-reload
+  ansible.builtin.systemd:
+    daemon_reload: yes
+
+- name: validate syslog-ng config
+  ansible.builtin.command: syslog-ng -s
+  register: syslogng_validate
+  changed_when: false
+
+- name: reload syslog-ng
+  ansible.builtin.systemd:
+    name: syslog-ng
+    state: reloaded
+
+- name: restart syslog-ng
+  ansible.builtin.systemd:
+    name: syslog-ng
+    state: restarted

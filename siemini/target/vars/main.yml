@@ -4,7 +4,6 @@ app_dir: /opt/juice-shop
 node_bin_dir: /usr/bin/versions/node/v22.20.0/bin
 node_path: "/usr/bin/versions/node/v22.20.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
 
-siem_ip: "4.172.250.103"
 juice_listen_port: "3000"
 vhost_name: "juice"
 apache_logs_dir: "/var/log/apache2"
@@ -19,3 +18,4 @@ apt_dependencies:
   - git
   - apache2
   - syslog-ng
+  - openjdk-17-jre-headless

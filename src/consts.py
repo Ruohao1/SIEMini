@@ -15,6 +15,11 @@ DEFAULTS = {
         "kibana_port": 5601,
         "ids_tool": "snort",
     },
-    "target": {"ansible_user": "ubuntu", "web_port": 8080, "ssh_port": 22},
+    "target": {
+        "ansible_user": "ubuntu",
+        "siem_ip": "192.168.2.200",
+        "web_port": 8080,
+        "ssh_port": 22,
+    },
     "attacker": {"ansible_user": "kali", "tools": ["nmap", "curl", "hydra"]},
 }

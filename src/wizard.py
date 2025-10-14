@@ -100,10 +100,12 @@ def add_many(
 
         # allow a few group-specific extra questions
         if group == "targets":
+            siem_ip = ask("SIEM IP address", str(DEFAULTS["target"]["siem_ip"]))
             web_port = ask("Target web port", str(DEFAULTS["target"]["web_port"]))
             ssh_port = ask("Target SSH port", str(DEFAULTS["target"]["ssh_port"]))
             entry["web_port"] = int(web_port)
             entry["ssh_port"] = int(ssh_port)
+            entry["siem_ip"] = siem_ip
 
         if group == "siems":
             entry["syslog_ng_port"] = DEFAULTS["siem"]["syslog_ng_port"]

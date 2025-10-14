@@ -45,24 +45,6 @@
   become: true
   roles:
     - target
-  post_tasks:
-    - name: Snort version (best-effort)
-      command: "{{ snort_prefix }}/bin/snort -V"
-      register: snort_ver
-      changed_when: false
-      failed_when: false
-
-    - name: Syslog-ng version (best-effort)
-      command: syslog-ng --version
-      register: syslog_ver
-      changed_when: false
-      failed_when: false
-
-    - name: Show versions and health summary
-      debug:
-        msg:
-          - "Snort: {{ snort_ver.stdout | default('N/A') }}"
-          - "syslog-ng: {{ (syslog_ver.stdout_lines | default([])) | join(' ') | default('N/A') }}"
 
 - name: Configure Attacker
   hosts: attackers

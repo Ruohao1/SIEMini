@@ -7,6 +7,7 @@ libdaq_prefix: /usr/local
 syslogng_keyring: /etc/apt/keyrings/syslog-ng-ose.gpg
 syslogng_list: /etc/apt/sources.list.d/syslog-ng-ose.list
 syslog_port: 514
+apache_logs_dir: /var/log/apache2
 
 elastic_dir: /opt/elastic-start-local
 es_name: es-local-dev

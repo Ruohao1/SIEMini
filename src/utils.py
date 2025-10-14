@@ -75,7 +75,7 @@ def write_host_vars(group: str, name: str, data: Dict[str, Any]):
     merged.update(data)
     # remove None
     merged = {k: v for k, v in merged.items() if v is not None}
-    fname = f"{group}_{name}.yml"
+    fname = f"{name}.yml"
     with open(HOST_VARS_DIR / fname, "w") as f:
         yaml.safe_dump(merged, f, sort_keys=False)
 

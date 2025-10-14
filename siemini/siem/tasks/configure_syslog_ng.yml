@@ -12,6 +12,74 @@
       source s_net { tcp(ip("0.0.0.0") port({{ syslog_port }})); };
 
       # For quick validation; swap this for Elasticsearch/Logstash later
-      destination d_apache { file("/var/log/siem/apache.log"); };
+      destination d_apache {
+        file("/var/log/siem/apache.log");
+      };
+
       log { source(s_net); destination(d_apache); };
+
   notify: Restart syslog-ng
+
+- name: Ensure apache log directory ownership/permissions
+  file:
+    path: /var/log/siem/apache.log
+    mode: 0640
+    owner: root
+    group: adm
+    state: touch
+
+- name: Ensure syslog-ng drop-in directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/system/syslog-ng.service.d
+    state: directory
+    mode: '0755'
+
+- name: Load Elasticsearch API key env into syslog-ng via drop-in
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/syslog-ng.service.d/10-elastic-env.conf
+    mode: '0644'
+    content: |
+      [Service]
+      EnvironmentFile={{ elastic_dir }}/.env
+  notify:
+    - systemd daemon-reload
+    - restart syslog-ng
+
+- name: Ensure elastic env file ownership/permissions
+  ansible.builtin.file:
+    path: "{{ elastic_dir }}/.env"
+    owner: root
+    group: root
+    mode: '0640'
+
+- name: Ship syslog-ng destination for Elasticsearch + Apache sources
+  ansible.builtin.copy:
+    dest: /etc/syslog-ng/conf.d/20-apache-forward.conf
+    mode: '0644'
+    content: |
+      destination d_elastic {
+        http(
+          url("http://localhost:9200/apache-logs/_doc")
+          method("POST")
+          headers(
+            "Content-Type: application/json",
+            "Authorization: ApiKey `ES_LOCAL_API_KEY`"
+          )
+          batch-lines(1)
+          workers(2)
+          persist-name("es_apache_single")
+          template-escape(no)
+          body("$(format-json --scope rfc5424 --exclude DATE --key @timestamp=${ISODATE})")
+        );
+      };
+
+      source s_apache {
+        file("/var/log/siem/apache.log" follow-freq(1));
+      };
+
+      log { source(s_apache); destination(d_elastic); };
+
+  notify:
+    - validate syslog-ng config
+    - reload syslog-ng
+
