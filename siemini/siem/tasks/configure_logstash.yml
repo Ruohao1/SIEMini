@@ -5,46 +5,74 @@
     owner: "{{ ansible_user }}"
     group: root
 
-- name: Ensure Logstash data directory exists
-  file:
-    path: "{{ ls_dir }}/data/sincedb"
-    state: directory
+- name: Ensure pipelines.yml exists (don’t overwrite if present)
+  ansible.builtin.copy:
+    dest: "{{ ls_dir }}/config/pipelines.yml"
+    content: ""
+    force: false
     owner: "{{ ansible_user }}"
-    group: root
+    mode: "0644"
 
 - name: Ensure apache logs are handled
   block:
-    - name: Craete pipeline for apache_access
+    - name: Create pipeline for apache_access
       ansible.builtin.blockinfile:
         path: "{{ ls_dir }}/config/pipelines.yml"
-        content: | 
+        marker: "# {mark} APACHE PIPELINE"
+        insertafter: EOF
+        block: |
           - pipeline.id: apache_syslog
-            path.config: "/opt/logstash/config/pipelines/apache_access.conf"
-        create: true
-        owner: "{{ ansible_user }}"
+            path.config: "{{ ls_pipelines_dir }}/apache_access.conf"
 
-    - name: Ensure db exists
-      file: 
+    - name: Ensure sincedb dir exists (apache)
+      ansible.builtin.file:
+        path: "{{ ls_dir }}/data/sincedb"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: root
+        mode: "0750"
+
+    - name: Ensure sincedb file exists (apache)
+      ansible.builtin.file:
         path: "{{ ls_dir }}/data/sincedb/apache_access"
         state: touch
         owner: "{{ ansible_user }}"
+        group: root
+        mode: "0640"
 
     - name: Logstash apache logs configuration
       ansible.builtin.template:
         dest: "{{ ls_pipelines_dir }}/apache_access.conf"
         src: templates/apache_access.conf.j2
 
-    - name: Ensure index is created
-      shell: | 
-        . {{ es_dir }}/config/.env
-        curl curl --cacert /opt/elasticsearch/config/certs/http_ca.crt -u $ES_USERNAME:$ES_PASSWORD 'https://localhost:9200/apache_access' -X PUT
-
-    - name: Set password from environment
-      shell: |
+    - name: Set password from environment (apache)
+      ansible.builtin.shell: |
         . {{ es_dir }}/config/.env
         sed -i "s/ELASTIC_PASSWORD/$ES_PASSWORD/g" {{ ls_pipelines_dir }}/apache_access.conf
-
+      args:
+        executable: /bin/bash
   notify: Restart Logstash
 
+- name: Ensure Snort alerts are handled
+  block:
+    - name: Create pipeline for snort alerts
+      ansible.builtin.blockinfile:
+        path: "{{ ls_dir }}/config/pipelines.yml"
+        marker: "# {mark} SNORT PIPELINE"
+        insertafter: EOF
+        block: |
+          - pipeline.id: snort_alerts
+            path.config: "{{ ls_pipelines_dir }}/snort_alerts.conf"
 
+    - name: Logstash snort alerts configuration
+      ansible.builtin.template:
+        dest: "{{ ls_pipelines_dir }}/snort_alerts.conf"
+        src: templates/snort_alerts.conf.j2
 
+    - name: Set password from environment (snort)
+      ansible.builtin.shell: |
+        . {{ es_dir }}/config/.env
+        sed -i "s/ELASTIC_PASSWORD/$ES_PASSWORD/g" {{ ls_pipelines_dir }}/snort_alerts.conf
+      args:
+        executable: /bin/bash
+  notify: Restart Logstash
