@@ -1,98 +1,135 @@
 ---
-- name: Ensure /usr/local/lib in ld.so.conf.d
-  ansible.builtin.lineinfile:
-    path: /etc/ld.so.conf.d/00-usr-local-lib.conf
-    line: "/usr/local/lib"
-    state: present
-    owner: root
-    group: root
-    mode: '0644'
-    create: true
-
-- name: Run ldconfig
-  command: ldconfig
-
-- name: Ensure Snort base directories
-  file:
-    path: "{{ snort_base }}"
-    state: directory
-    mode: '0755'
-
-- name: Ensure libdaq is installed
-  block:
-    - name: Check for libdaq pkg-config file
-      stat:
-        path: "{{ libdaq_prefix }}/lib/pkgconfig/daq.pc"
-      register: daq_pc
-
-    - name: Install libdaq
-      when: not daq_pc.stat.exists
-      block:
-        - name: Clone or update libdaq
-          git:
-            repo: https://github.com/snort3/libdaq.git
-            dest: "{{ snort_base }}/libdaq"
-            version: master
-            update: yes
-
-        - name: Bootstrap libdaq
-          command: 
-            cmd: ./bootstrap
-            chdir: "{{ snort_base }}/libdaq"
-
-        - name: Configure libdaq
-          command: 
-            cmd: ./configure --prefix="{{ libdaq_prefix }}"
-            chdir: "{{ snort_base }}/libdaq"
-
-        - name: Build libdaq
-          command:
-            cmd: make -j"{{ ansible_facts.processor_vcpus | default(2) }}"
-            chdir: "{{ snort_base }}/libdaq"
-
-        - name: Install libdaq
-          command: 
-            cmd: make install
-            chdir: "{{ snort_base }}/libdaq"
-          notify: Run ldconfig
-
 - name: Ensure Snort3 is installed
+  ansible.builtin.package: 
+    name: snort
+    state: present
+
+- name: Configure Snort3
+  template: 
+    src: snort_local.rules
+    dest: /etc/snort/rules/local.rules
+  notify: Restart Snort
+
+- name: Let Logstash read Snort logs
   block:
-    - name: Check for snort binary
-      stat:
-        path: "{{ snort_prefix }}/bin/snort"
-      register: snort_bin
+    - name: Ensure /var/log/snort exists with proper owner/group/mode
+      ansible.builtin.file:
+        path: /var/log/snort
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: root
+        mode: "0750"
 
-    - name: Install Snort3 
-      block:
-        - name: Clone or update Snort3 source
-          git:
-            repo: https://github.com/snort3/snort3.git
-            dest: "{{ snort_prefix }}"
-            version: master
-            update: yes
-          when: not snort_bin.stat.exists
+    - name: Ensure main fast log exists and is readable by logstash
+      ansible.builtin.file:
+        path: /var/log/snort/snort.alert.fast
+        state: touch
+        owner: "{{ ansible_user }}"
+        group: root
+        mode: "0640"
 
-        - name: Configure Snort3 (cmake helper)
-          command: ./configure_cmake.sh --prefix="{{ snort_prefix }}"
-          args:
-            chdir: "{{ snort_prefix }}"
-          environment:
-            PKG_CONFIG_PATH: "{{ libdaq_prefix }}/lib/pkgconfig:{{ lookup('env', 'PKG_CONFIG_PATH') | default('', true) }}"
-            CMAKE_PREFIX_PATH: "{{ libdaq_prefix }}:{{ lookup('env', 'CMAKE_PREFIX_PATH') | default('', true) }}"
-          when: not snort_bin.stat.exists
-
-        - name: Build + install Snort3
-          command: make -j"{{ ansible_facts.processor_vcpus | default(2) }}" install
-          args:
-            chdir: "{{ snort_prefix }}/build"
-          when: not snort_bin.stat.exists
-          notify: Run ldconfig
-
-        - name: Ensure snort in PATH via profile.d
-          copy:
-            dest: /etc/profile.d/snort.sh
-            content: "export PATH={{ snort_prefix }}/bin:$PATH\n"
-            owner: root
-            group: root
-            mode: '0644'
+    - name: Recursively fix ownership/permissions for any existing files
+      ansible.builtin.file:
+        path: /var/log/snort
+        recurse: true
+        owner: "{{ ansible_user }}"
+        group: root
+        mode: "u=rwX,g=rX,o="
+  
+# - name: Ensure /usr/local/lib in ld.so.conf.d
+#   ansible.builtin.lineinfile:
+#     path: /etc/ld.so.conf.d/00-usr-local-lib.conf
+#     line: "/usr/local/lib"
+#     state: present
+#     owner: root
+#     group: root
+#     mode: '0644'
+#     create: true
+#
+# - name: Run ldconfig
+#   command: ldconfig
+#
+# - name: Ensure Snort base directories
+#   file:
+#     path: "{{ snort_base }}"
+#     state: directory
+#     mode: '0755'
+#
+# - name: Ensure libdaq is installed
+#   block:
+#     - name: Check for libdaq pkg-config file
+#       stat:
+#         path: "{{ libdaq_prefix }}/lib/pkgconfig/daq.pc"
+#       register: daq_pc
+#
+#     - name: Install libdaq
+#       when: not daq_pc.stat.exists
+#       block:
+#         - name: Clone or update libdaq
+#           git:
+#             repo: https://github.com/snort3/libdaq.git
+#             dest: "{{ snort_base }}/libdaq"
+#             version: master
+#             update: yes
+#
+#         - name: Bootstrap libdaq
+#           command: 
+#             cmd: ./bootstrap
+#             chdir: "{{ snort_base }}/libdaq"
+#
+#         - name: Configure libdaq
+#           command: 
+#             cmd: ./configure --prefix="{{ libdaq_prefix }}"
+#             chdir: "{{ snort_base }}/libdaq"
+#
+#         - name: Build libdaq
+#           command:
+#             cmd: make -j"{{ ansible_facts.processor_vcpus | default(2) }}"
+#             chdir: "{{ snort_base }}/libdaq"
+#
+#         - name: Install libdaq
+#           command: 
+#             cmd: make install
+#             chdir: "{{ snort_base }}/libdaq"
+#           notify: Run ldconfig
+#
+# - name: Ensure Snort3 is installed
+#   block:
+#     - name: Check for snort binary
+#       stat:
+#         path: "{{ snort_prefix }}/bin/snort"
+#       register: snort_bin
+#
+#     - name: Install Snort3 
+#       block:
+#         - name: Clone or update Snort3 source
+#           git:
+#             repo: https://github.com/snort3/snort3.git
+#             dest: "{{ snort_prefix }}"
+#             version: master
+#             update: yes
+#           when: not snort_bin.stat.exists
+#
+#         - name: Configure Snort3 (cmake helper)
+#           command: ./configure_cmake.sh --prefix="{{ snort_prefix }}"
+#           args:
+#             chdir: "{{ snort_prefix }}"
+#           environment:
+#             PKG_CONFIG_PATH: "{{ libdaq_prefix }}/lib/pkgconfig:{{ lookup('env', 'PKG_CONFIG_PATH') | default('', true) }}"
+#             CMAKE_PREFIX_PATH: "{{ libdaq_prefix }}:{{ lookup('env', 'CMAKE_PREFIX_PATH') | default('', true) }}"
+#           when: not snort_bin.stat.exists
+#
+#         - name: Build + install Snort3
+#           command: make -j"{{ ansible_facts.processor_vcpus | default(2) }}" install
+#           args:
+#             chdir: "{{ snort_prefix }}/build"
+#           when: not snort_bin.stat.exists
+#           notify: Run ldconfig
+#
+#         - name: Ensure snort in PATH via profile.d
+#           copy:
+#             dest: /etc/profile.d/snort.sh
+#             content: "export PATH={{ snort_prefix }}/bin:$PATH\n"
+#             owner: root
+#             group: root
+#             mode: '0644'

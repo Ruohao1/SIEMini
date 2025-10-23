@@ -76,3 +76,4 @@
       args:
         executable: /bin/bash
   notify: Restart Logstash
+

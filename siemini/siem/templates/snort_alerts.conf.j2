@@ -1,55 +1,50 @@
 input {
   file {
-    path => "/var/log/snort"    
+    path => "/var/log/snort/snort.alert.fast"    
     start_position => "beginning"
   }
 }
-
 filter {
-  # Identify dataset/module
   mutate {
     add_field => {
-      "[event][dataset]" => "snort.alert"
-      "[event][module]"  => "snort"
+      "[event][dataset]"   => "snort.alert"
+      "[event][module]"    => "snort"
       "[observer][vendor]" => "Snort"
-      "[event][kind]"    => "alert"
-      "[event][category]" => "intrusion_detection"
+      "[event][kind]"      => "alert"
+      "[event][category]"  => "intrusion_detection"
     }
   }
 
-  # Example:
-  # 10/23-00:28:11.350542  [] [1:100000187:2] COMMUNITY WEB-PHP XSS attempt [] [Classification: Web Application Attack] [Priority: 1] {TCP} 192.168.2.49:54716 -> 192.168.2.56:80
   grok {
     match => {
       "message" => [
-        "^%{MONTHNUM:snort.mm}/%{MONTHDAY:snort.dd}-%{TIME:snort.time}\s+\[\]\s+\[%{NUMBER:snort.gid:int}:%{NUMBER:snort.sid:int}:%{NUMBER:snort.rev:int}\]\s+%{DATA:[rule][name]}\s+\[\]\s+\[Classification:\s*%{DATA:[rule][category]}\]\s+\[Priority:\s*%{NUMBER:[event][severity]:int}\]\s+\{\s*%{WORD:[network][transport]}\s*\}\s+%{IP:[source][ip]}:%{NUMBER:[source][port]:int}\s+->\s+%{IP:[destination][ip]}:%{NUMBER:[destination][port]:int}$"
+        # Example fast line:
+        # 10/23-21:05:30.000000  [**] [1:999999:1] SIEM TEST ALERT [**] [Classification: Misc activity] [Priority: 2] {TCP} 10.0.0.1:12345 -> 10.0.0.2:80
+        "^%{MONTHNUM:snort.mm}/%{MONTHDAY:snort.dd}-%{TIME:snort.time}\s+"                                     # ts
+        "\[\*\*\]\s+\[%{NUMBER:snort.gid:int}:%{NUMBER:snort.sid:int}:%{NUMBER:snort.rev:int}\]\s+"           # [**] [gid:sid:rev]
+        "%{DATA:[rule][name]}\s+\[\*\*\]\s+\[Classification:\s*%{DATA:[rule][category]}\]\s+"                  # msg + [**] + Classification
+        "\[Priority:\s*%{NUMBER:[event][severity]:int}\]\s+\{\s*%{WORD:[network][transport]}\s*\}\s+"         # Priority + {PROTO}
+        "%{IP:[source][ip]}:%{NUMBER:[source][port]:int}\s+->\s+%{IP:[destination][ip]}:%{NUMBER:[destination][port]:int}$"
       ]
     }
-    remove_field => ["message"]
+    # keep message only on failure for troubleshooting
     tag_on_failure => ["_grokparsefailure_snort"]
   }
 
-  # Build a useful rule.id of "gid:sid:rev"
   mutate {
     add_field => { "[rule][id]" => "%{[snort][gid]}:%{[snort][sid]}:%{[snort][rev]}" }
-    lowercase => [ "[network][transport]" ]   # TCP/UDP -> tcp/udp
+    lowercase  => [ "[network][transport]" ]
+    add_field  => { "snort.compact_ts" => "%{[snort][mm]}/%{[snort][dd]}-%{[snort][time]}" }
   }
 
-  # Parse timestamp (Snort fast.log has no year; we assume current year + local TZ)
-  # Pattern: MM/dd-HH:mm:ss.SSSSSS  (microseconds ok; extra digits are fine)
-  mutate {
-    add_field => { "snort.compact_ts" => "%{[snort][mm]}/%{[snort][dd]}-%{[snort][time]}" }
-  }
   date {
     match    => [ "snort.compact_ts", "MM/dd-HH:mm:ss.SSSSSS", "MM/dd-HH:mm:ss.SSS" ]
     timezone => "America/Toronto"
     target   => "@timestamp"
   }
 
-  # Optional enrichment
   geoip { source => "[source][ip]" target => "[source][geo]" }
 
-  # Housekeeping
   mutate { remove_field => ["snort.mm","snort.dd","snort.time","snort.compact_ts"] }
 }
 

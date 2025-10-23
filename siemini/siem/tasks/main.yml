@@ -4,6 +4,7 @@
   import_tasks: tasks/install_dependencies.yml
 
 - name: Install Snort3
+  tags: install_snort
   import_tasks: tasks/install_snort3.yml
 
 - name: Install ElasticSearch

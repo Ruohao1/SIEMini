@@ -39,27 +39,27 @@
     state: present
   with_items: "{{ apt_dependencies }}"
 
-- name: Ensure docker engine is installed
-  block:
-    - name: Check if docker command exists
-      command: which docker
-      register: docker_exists
-      changed_when: false
-      failed_when: false
-
-    - name: Install Docker using get.docker.com
-      shell: curl -fsSL https://get.docker.com/ | sh
-      when: docker_exists.rc != 0
-
-    - name: Ensure docker group exists
-      group:
-        name: docker
-        state: present
-
-    - name: Add current user to docker group
-      user:
-        name: "{{ ansible_user_id }}"
-        groups: docker
-        append: true
+# - name: Ensure docker engine is installed
+#   block:
+#     - name: Check if docker command exists
+#       command: which docker
+#       register: docker_exists
+#       changed_when: false
+#       failed_when: false
+#
+#     - name: Install Docker using get.docker.com
+#       shell: curl -fsSL https://get.docker.com/ | sh
+#       when: docker_exists.rc != 0
+#
+#     - name: Ensure docker group exists
+#       group:
+#         name: docker
+#         state: present
+#
+#     - name: Add current user to docker group
+#       user:
+#         name: "{{ ansible_user }}"
+#         groups: docker
+#         append: true
 
 

@@ -47,3 +47,9 @@
   systemd_service:
     name: kibana
     state: restarted
+
+- name: Restart Snort
+  systemd_service:
+    name: snort
+    state: restarted
+
