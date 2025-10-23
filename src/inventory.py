@@ -13,7 +13,7 @@ from .utils import (
     write_host_vars,
 )
 
-setter = typer.Typer()
+inventory = typer.Typer()
 
 
 def set_host(
@@ -65,7 +65,7 @@ def set_host(
     )
 
 
-@setter.command("target")
+@inventory.command("target")
 def set_target(
     name: str = typer.Argument(..., help="Name for this target (e.g. web01)"),
     ip: str = typer.Option(..., help="IP or hostname"),
@@ -82,7 +82,7 @@ def set_target(
     set_host("target", name, ip, ssh_key, root_user, root_user_pass, ansible_user)
 
 
-@setter.command("siem")
+@inventory.command("siem")
 def set_siem(
     name: str = typer.Argument(..., help="Name for this SIEM host (e.g. siem01)"),
     ip: str = typer.Option(..., help="IP or hostname"),
@@ -98,7 +98,7 @@ def set_siem(
     set_host("siem", name, ip, ssh_key, root_user, root_user_pass, ansible_user)
 
 
-@setter.command("attacker")
+@inventory.command("attacker")
 def set_attacker(
     name: str = typer.Argument(..., help="Name for this attacker host (e.g. kali01)"),
     ip: str = typer.Option(..., help="IP or hostname"),
@@ -115,4 +115,4 @@ def set_attacker(
 
 
 if __name__ == "__main__":
-    setter()
+    inventory()

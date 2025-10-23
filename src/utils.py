@@ -3,22 +3,110 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 import json
 import yaml
+import os
+import sys
+import shlex
 import typer
 
-from .consts import INVENTORY_DIR, META_FILE, HOSTS_INI, HOST_VARS_DIR, DEFAULTS
+from src.consts import DEFAULTS, HOSTS_INI, HOST_VARS_DIR, INVENTORY_DIR, META_FILE
 
 
-def run_command(cmd, verbose=True):
-    print(f"Running command: {cmd}")
+def run_command(cmd, verbose=True, stream=True, use_pty=True, cwd=None, env=None):
+    """
+    Run a command and (optionally) stream output live.
+    - stream=True: print lines as they arrive (useful for Ansible)
+    - use_pty=True: allocate a pseudo-TTY so Ansible shows colored, unbuffered output
+      (Unix only; auto-falls back when unavailable)
+    Returns: {"returncode", "stdout"}
+    """
+    cmd_list = shlex.split(cmd) if isinstance(cmd, str) else cmd
+    typer.secho(f"[RUN] {' '.join(cmd_list)}", fg=typer.colors.GREEN, bold=True)
 
-    result = subprocess.run(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+    # Detect Ansible and force color
+    is_ansible = any(
+        os.path.basename(str(x)).startswith("ansible") for x in (cmd_list[:1] or [])
     )
+    run_env = os.environ.copy()
+    if env:
+        run_env.update(env)
+    if is_ansible:
+        run_env.setdefault("ANSIBLE_FORCE_COLOR", "1")
 
-    if verbose:
-        print(result.stdout)
+    if not stream:
+        result = subprocess.run(
+            cmd_list,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            cwd=cwd,
+            env=run_env,
+        )
+        if verbose:
+            print(result.stdout, end="")
+        return {"returncode": result.returncode, "stdout": result.stdout}
 
-    return result
+    # Streaming
+    stdout_accum = []
+
+    if use_pty:
+        try:
+            import pty
+            import select
+
+            master_fd, slave_fd = pty.openpty()
+            proc = subprocess.Popen(
+                cmd_list,
+                stdin=slave_fd,
+                stdout=slave_fd,
+                stderr=slave_fd,
+                cwd=cwd,
+                env=run_env,
+                text=False,
+                close_fds=True,
+            )
+            os.close(slave_fd)
+
+            while True:
+                r, _, _ = select.select([master_fd], [], [], 0.1)
+                if master_fd in r:
+                    try:
+                        chunk = os.read(master_fd, 4096)
+                    except OSError:
+                        chunk = b""
+                    if not chunk:
+                        break
+                    if verbose:
+                        sys.stdout.buffer.write(chunk)
+                        sys.stdout.flush()
+                    stdout_accum.append(chunk)
+                if proc.poll() is not None and not r:
+                    break
+
+            os.close(master_fd)
+            return {
+                "returncode": proc.returncode,
+                "stdout": b"".join(stdout_accum).decode(errors="replace"),
+            }
+        except Exception:
+            # PTY not available (e.g., Windows) or failed: fall back below
+            pass
+
+    with subprocess.Popen(
+        cmd_list,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,  # line-buffered
+        universal_newlines=True,
+        cwd=cwd,
+        env=run_env,
+    ) as proc:
+        for line in proc.stdout:
+            stdout_accum.append(line)
+            if verbose:
+                print(line, end="")
+        proc.wait()
+        return {"returncode": proc.returncode, "stdout": "".join(stdout_accum)}
 
 
 def ensure_dirs():

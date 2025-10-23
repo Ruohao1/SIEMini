@@ -1,6 +1,6 @@
 import typer
 
-from src.setter import setter
+from src.setup import setter
 from src.consts import HOSTS_INI
 from src.utils import ensure_dirs, load_meta
 from src.wizard import setup_wizard

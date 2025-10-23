@@ -1,0 +1,63 @@
+- name: Enroll Kibana
+  block: 
+    - name: Create an enrollment token
+      shell: "{{ es_dir }}/bin/elasticsearch-create-enrollment-token -s kibana"
+      register: kb_token
+
+    - name: Enroll Kibana
+      shell: "{{ kb_dir }}/bin/kibana-setup --enrollment-token {{ kb_token.stdout }}"
+
+- name: Configure environment variables
+  block: 
+    - name: Reset KB password
+      ansible.builtin.shell: "echo 'y' | {{ es_dir }}/bin/elasticsearch-reset-password -u kibana_system -s"
+      register: kb_password
+
+    - name: Set Kibana env vars in .env
+      ansible.builtin.ini_file:
+        path: "{{ es_dir }}/config/.env"
+        section: null              # no sections in .env
+        option: "{{ item.option }}"
+        value: "{{ item.value }}"
+        no_extra_spaces: true
+        owner: "{{ ansible_user }}"
+        mode: '0640'
+      loop:
+        - { option: 'KB_USERNAME', value: 'elastic' }
+        - { option: 'KB_PASSWORD', value: '{{ kb_password.stdout }}' }
+      no_log: true  
+
+# - name: Ensure Kibana knows to auh to ES 
+#   block: 
+#     - name: Get ES_PASSWORD
+#       shell: | 
+#         . {{ es_dir }}/config/.env
+#         echo $KB_PASSWORD
+#       register: es_password
+#
+#     - name: Set Kibana Elasticsearch creds
+#       ansible.builtin.lineinfile:
+#         path: "{{ kb_dir }}/config/kibana.yml"
+#         regexp: '^{{ item.key | regex_escape }}:\s*'
+#         line: '{{ item.key }}: {{ item.value | quote }}'
+#         insertafter: EOF
+#         create: true
+#       loop:
+#         - { key: 'elasticsearch.username', value: 'kibana_system' }
+#         - { key: 'elasticsearch.password', value: '{{ es_password.stdout }}' }
+#       no_log: true
+#
+- name: Ensure Kibana encryption keys
+  block: 
+    - name: Create Kibana encryption keys
+      shell: | 
+        {{ kb_dir }}/bin/kibana-encryption-keys generate -q -f
+      register: kb_encryption_keys
+
+    - name: Configure kibana
+      ansible.builtin.blockinfile:
+        path: "{{ kb_dir }}/config/kibana.yml"
+        content: | 
+          {{ kb_encryption_keys.stdout }}
+  notify: Restart Kibana
+

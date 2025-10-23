@@ -1,0 +1,52 @@
+# - name: Install Logstash
+#   block:
+#     - name: Download Logstash
+#       unarchive: 
+#         src: https://artifacts.elastic.co/downloads/logstash/logstash-9.1.5-linux-x86_64.tar.gz
+#         remote_src: yes
+#         dest: /opt
+#         owner: "{{ ansible_user }}"
+#
+#     - name: Rename extracted Logstash directory
+#       command: "mv /opt/logstash-9.1.5 {{ ls_dir }}"
+
+- name: Install systemd unit for Logstash
+  copy:
+    dest: "/etc/systemd/system/logstash.service"
+    content: |
+      [Unit]
+      Description=Logstash
+      Documentation=https://www.elastic.co/guide/
+      Wants=network-online.target
+      After=network-online.target
+
+      [Service]
+      Type=simple
+      User={{ ansible_user }}
+      Group=root
+
+      Environment=LS_HOME=/opt/logstash
+      Environment=LS_SETTINGS_DIR=/opt/logstash/config
+      WorkingDirectory=/opt/logstash
+
+      # Start Logstash; reads pipelines.yml and *.conf from LS_SETTINGS_DIR
+      ExecStart=/opt/logstash/bin/logstash
+      Restart=on-failure
+      RestartSec=5s
+      TimeoutStartSec=600
+
+      # Recommended limits
+      LimitNOFILE=65535
+      LimitNPROC=4096
+
+      [Install]
+      WantedBy=multi-user.target
+  notify:
+    - Restart Logstash
+
+- name: Enable systemd unit for Logstash
+  ansible.builtin.systemd_service:
+    name: logstash.service
+    daemon_reload: true
+    state: started
+    enabled: yes

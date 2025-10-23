@@ -84,7 +84,6 @@ def choose_auth(ip: str, default_user: str) -> Dict[str, Any]:
     return result
 
 
-# ---------- wizard steps ----------
 def add_many(
     group: str, default_name: str, default_user: str, meta: Dict[str, Dict[str, Any]]
 ):
@@ -98,7 +97,6 @@ def add_many(
 
         entry = {"ip": ip, **auth}
 
-        # allow a few group-specific extra questions
         if group == "targets":
             siem_ip = ask("SIEM IP address", str(DEFAULTS["target"]["siem_ip"]))
             web_port = ask("Target web port", str(DEFAULTS["target"]["web_port"]))
@@ -118,9 +116,7 @@ def add_many(
 
         if not yesno(f"Add another {group} host?", False):
             break
-        # bump default_name if user keeps adding
         if default_name.rstrip("0123456789").startswith(group):
-            # crude increment
             digits = "".join(ch for ch in default_name if ch.isdigit())
             n = int(digits or "1") + 1
             default_name = f"{group}{n}"

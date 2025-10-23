@@ -28,3 +28,22 @@
   ansible.builtin.systemd:
     name: syslog-ng
     state: restarted
+
+- name: Daemon reload
+  systemd:
+    daemon_reload: true
+
+- name: Restart Logstash
+  systemd_service:
+    name: logstash
+    state: restarted
+
+- name: Restart Elasticsearch
+  systemd_service:
+    name: elasticsearch
+    state: restarted
+
+- name: Restart Kibana
+  systemd_service:
+    name: kibana
+    state: restarted

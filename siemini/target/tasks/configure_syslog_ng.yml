@@ -7,7 +7,7 @@
       # Source: tail Apache access & error logs
       source s_apache {
         file("{{ apache_logs_dir }}/{{ vhost_name }}-access.log" follow-freq(1));
-        file("{{ apache_logs_dir }}/{{ vhost_name }}-error.log"  follow-freq(1));
+        # file("{{ apache_logs_dir }}/{{ vhost_name }}-error.log"  follow-freq(1));
       };
 
       # Destination: forward to SIEM over TCP

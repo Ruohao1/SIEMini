@@ -1,0 +1,113 @@
+input {
+  file {
+    path => "/var/log/siem/apache_access.log"
+    start_position => "beginning"
+  }
+}
+
+filter {
+  # --- Normalize / dataset tag ---
+  mutate { add_field => { "event.dataset" => "apache.access" } }
+
+  # Parse example:
+  # Oct 23 02:14:57 172.16.45.135 172.16.45.1 - - [23/Oct/2025:02:14:56 +0000] "GET /rest/user/whoami HTTP/1.1" 200 434 "http://172.16.45.135/" "Mozilla/5.0 ..."
+  grok {
+    match => {
+      "message" => [
+        "%{SYSLOGTIMESTAMP:syslog.ts} %{IPORHOST:destination.ip} %{IPORHOST:source.ip} - - \[%{HTTPDATE:http.ts}\] \"%{WORD:[http][request][method]} %{URIPATH:[url][path]}(?:\?%{DATA:[url][query]})? HTTP/%{NUMBER:[http][version]}\" %{NUMBER:[http][response][status]:int} %{NUMBER:[http][response][body][bytes]:long} \"%{DATA:[http][request][referrer]}\" \"%{DATA:[user_agent][original]}\""
+      ]
+    }
+    remove_field => ["message"]
+  }
+
+  # Use app timestamp as @timestamp
+  date {
+    match  => [ "http.ts", "dd/MMM/yyyy:HH:mm:ss Z" ]
+    target => "@timestamp"
+  }
+
+  # UA -> structured
+  useragent {
+    source => "[user_agent][original]"
+    target => "[user_agent]"
+  }
+
+  # GeoIP on client
+  geoip {
+    source => "[source][ip]"
+    target => "[source][geo]"
+  }
+
+  # Query length (helps flag payload-like requests)
+  ruby {
+    code => '
+      q = event.get("[url][query]")
+      event.set("[url][query_length]", q.nil? ? 0 : q.length)
+    '
+  }
+
+  # --- Noise suppression ---
+  if [url][path] == "/healthz" { drop { } }
+  if ([http][response][status] in [200, 204] and [url][path] =~ /\.(?:css|js|png|jpg|jpeg|gif|ico|svg|woff2?)$/) { drop { } }
+
+  # --- Suspicion tagging ---
+  # Unusual verbs
+  if [http][request][method] in ["PUT","DELETE","PATCH","PROPFIND","SEARCH"] {
+    mutate { add_tag => ["suspicious","suspicious.web","verb.unusual"] }
+  }
+
+  # Payload-like queries
+  if [url][query_length] and [url][query_length] > 800 {
+    mutate { add_tag => ["suspicious","suspicious.web","query.long"] }
+  }
+
+  # LFI / RCE in PATH (case-insensitive), using plain regex not %{DATA}
+  grok {
+    match => {
+      "[url][path]" => [
+        "(?i).*(?:\\.\\./|%2e%2e|/etc/passwd|/proc/self/environ).*"
+      ]
+    }
+    tag_on_failure => []
+    add_tag => ["suspicious","suspicious.web","payload.pattern"]
+  }
+
+  # SQLi / cmd-injection crumbs in QUERY (case-insensitive), avoid %{DATA}
+  grok {
+    match => {
+      "[url][query]" => [
+        "(?i).*union.*select.*",
+        "(?i).*sleep\\(.*\\).*",   # balanced parens so the engine can relax
+        "(?i).*or\\+1=1.*",
+        "(?i).*[;]wget.*",
+        "(?i).*[;]curl.*"
+      ]
+    }
+    tag_on_failure => []
+    add_tag => ["suspicious","suspicious.web","payload.pattern"]
+  }
+}
+
+output {
+  if "suspicious" in [tags] {
+    elasticsearch {
+      hosts => ["https://localhost:9200"]
+      user  => "elastic"
+      password => "ELASTIC_PASSWORD"
+      ssl_enabled => true
+      ssl_certificate_authorities => "/opt/elasticsearch/config/certs/http_ca.crt"
+      index => "apache-suspicious-%{+YYYY.MM.dd}"
+    }
+  } else {
+    elasticsearch {
+      hosts => ["https://localhost:9200"]
+      user  => "elastic"
+      password => "ELASTIC_PASSWORD"
+      ssl_enabled => true
+      ssl_certificate_authorities => "/opt/elasticsearch/config/certs/http_ca.crt"
+      index => "apache-access-%{+YYYY.MM.dd}"
+    }
+  }
+
+  stdout { codec => rubydebug }
+}

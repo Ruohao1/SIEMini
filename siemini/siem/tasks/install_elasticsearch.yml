@@ -1,0 +1,74 @@
+- name: Install Elasticsearch
+  ansible.builtin.unarchive:
+    src: https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-9.1.5-linux-x86_64.tar.gz
+    dest: "{{ base_dir }}"
+    remote_src: yes
+    owner: "{{ ansible_user }}"
+
+- name: Rename extracted Elasticsearch directory
+  ansible.builtin.command:
+    cmd: "mv {{ base_dir }}/elasticsearch-9.1.5 {{ es_dir }}"
+
+- name: Configure systemd for Elasticsearch
+  copy: 
+    dest: /etc/systemd/system/elasticsearch.service
+    content: | 
+      [Unit]
+      Description=Elasticsearch
+      Documentation=https://www.elastic.co/guide/
+      Wants=network-online.target
+      After=network-online.target
+
+      [Service]
+      Type=simple
+      User={{ ansible_user }}
+      Group=root
+
+      # Set your install + config dirs
+      Environment=ES_HOME=/opt/elasticsearch
+      Environment=ES_PATH_CONF=/opt/elasticsearch/config
+      WorkingDirectory=/opt/elasticsearch
+
+      # Start the server
+      ExecStart=/opt/elasticsearch/bin/elasticsearch
+      Restart=on-failure
+      RestartSec=5s
+
+      # Give ES time to boot on cold starts
+      TimeoutStartSec=900
+
+      # File descriptor / process limits recommended by Elastic
+      LimitNOFILE=65535
+      LimitNPROC=4096
+
+      [Install]
+      WantedBy=multi-user.target
+  notify: Restart Elasticsearch
+
+- name: Enable systemd unit for Elasticsearch
+  ansible.builtin.systemd_service:
+    name: elasticsearch.service
+    daemon_reload: true
+    state: started
+    enabled: yes
+
+- name: Configure environment variables
+  block: 
+    - name: Reset ES password
+      ansible.builtin.shell: "echo 'y' | {{ es_dir }}/bin/elasticsearch-reset-password -u elastic -s"
+      register: es_password
+
+    - name: Set Elasticsearch env vars in .env
+      ansible.builtin.ini_file:
+        path: "{{ es_dir }}/config/.env"
+        section: null      
+        option: "{{ item.option }}"
+        value: "{{ item.value }}"
+        no_extra_spaces: true
+        owner: "{{ ansible_user }}"
+        mode: '0640'
+      loop:
+        - { option: 'ES_USERNAME', value: 'elastic' }
+        - { option: 'ES_PASSWORD', value: '{{ es_password.stdout }}' }
+      no_log: true  
+

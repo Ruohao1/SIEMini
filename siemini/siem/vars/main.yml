@@ -9,13 +9,14 @@ syslogng_list: /etc/apt/sources.list.d/syslog-ng-ose.list
 syslog_port: 514
 apache_logs_dir: /var/log/apache2
 
-elastic_dir: /opt/elastic-start-local
-es_name: es-local-dev
-kb_name: kibana-local-dev
-kibana_port: 5601
+base_dir: /opt
+es_dir: "{{ base_dir }}/elasticsearch"
+kb_dir: "{{ base_dir }}/kibana"
+ls_dir: "{{ base_dir }}/logstash"
+ls_pipelines_dir: "{{ ls_dir }}/config/pipelines"
 
 apt_dependencies:
-  - build-essential
+ - build-essential
   - cmake
   - make
   - gcc
@@ -44,6 +45,5 @@ apt_dependencies:
   - syslog-ng-core
   - syslog-ng-mod-http
   - syslog-ng-scl
+  - unzip
 
-# From group_vars/all.yml (see below):
-# siem_host: 10.0.0.10

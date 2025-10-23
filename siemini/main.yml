@@ -4,41 +4,6 @@
   become: true
   roles:
     - siem
-  post_tasks:
-    - name: Snort version (best-effort)
-      command: "{{ snort_prefix }}/bin/snort -V"
-      register: snort_ver
-      changed_when: false
-      failed_when: false
-
-    - name: Syslog-ng version (best-effort)
-      command: syslog-ng --version
-      register: syslog_ver
-      changed_when: false
-      failed_when: false
-
-    - name: Check Elasticsearch on 9200 (localhost)
-      uri:
-        url: http://127.0.0.1:9200
-        status_code: 200
-      register: es_health
-      failed_when: false
-
-    - name: Check Kibana port
-      uri:
-        url: "http://127.0.0.1:5601"
-        status_code: 200
-      register: kb_health
-      failed_when: false
-
-    - name: Show versions and health summary
-      debug:
-        msg:
-          - "Snort: {{ snort_ver.stdout | default('N/A') }}"
-          - "syslog-ng: {{ (syslog_ver.stdout_lines | default([])) | join(' ') | default('N/A') }}"
-          - "Elasticsearch responding: {{ (es_health.status | default(0)) == 200 }}"
-          - "Kibana responding: {{ (kb_health.status | default(0)) == 200 }}"
-
 
 - name: Configure Target
   hosts: targets

@@ -1,0 +1,50 @@
+- name: Ensure Logstash pipilines directory exists
+  file:
+    path: "{{ ls_pipelines_dir }}" 
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: root
+
+- name: Ensure Logstash data directory exists
+  file:
+    path: "{{ ls_dir }}/data/sincedb"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: root
+
+- name: Ensure apache logs are handled
+  block:
+    - name: Craete pipeline for apache_access
+      ansible.builtin.blockinfile:
+        path: "{{ ls_dir }}/config/pipelines.yml"
+        content: | 
+          - pipeline.id: apache_syslog
+            path.config: "/opt/logstash/config/pipelines/apache_access.conf"
+        create: true
+        owner: "{{ ansible_user }}"
+
+    - name: Ensure db exists
+      file: 
+        path: "{{ ls_dir }}/data/sincedb/apache_access"
+        state: touch
+        owner: "{{ ansible_user }}"
+
+    - name: Logstash apache logs configuration
+      ansible.builtin.template:
+        dest: "{{ ls_pipelines_dir }}/apache_access.conf"
+        src: templates/apache_access.conf.j2
+
+    - name: Ensure index is created
+      shell: | 
+        . {{ es_dir }}/config/.env
+        curl curl --cacert /opt/elasticsearch/config/certs/http_ca.crt -u $ES_USERNAME:$ES_PASSWORD 'https://localhost:9200/apache_access' -X PUT
+
+    - name: Set password from environment
+      shell: |
+        . {{ es_dir }}/config/.env
+        sed -i "s/ELASTIC_PASSWORD/$ES_PASSWORD/g" {{ ls_pipelines_dir }}/apache_access.conf
+
+  notify: Restart Logstash
+
+
+

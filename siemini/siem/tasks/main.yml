@@ -7,9 +7,31 @@
   import_tasks: tasks/install_snort3.yml
 
 - name: Install ElasticSearch
-  import_tasks: tasks/install_elastic_search.yml
+  tags: install_elasticsearch
+  import_tasks: tasks/install_elasticsearch.yml
+
+- name: Configure ElasticSearch
+  tags: configure_elasticsearch
+  import_tasks: tasks/configure_elasticsearch.yml
+
+- name: Install Kibana
+  tags: install_kibana
+  import_tasks: tasks/install_kibana.yml
+
+- name: Configure Kibana
+  tags: configure_kibana
+  import_tasks: tasks/configure_kibana.yml
+
+- name: Install Logstash
+  tags: install_logstash
+  import_tasks: tasks/install_logstash.yml
+
+- name: Configure Logstash
+  tags: configure_logstash
+  import_tasks: tasks/configure_logstash.yml
 
 - name: Configure syslog-ng
+  tags: configure_syslog_ng
   import_tasks: tasks/configure_syslog_ng.yml
 
 

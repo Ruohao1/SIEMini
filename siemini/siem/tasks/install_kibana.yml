@@ -1,0 +1,67 @@
+- name: Install Kibana
+  ansible.builtin.unarchive:
+    src: https://artifacts.elastic.co/downloads/kibana/kibana-9.1.5-linux-x86_64.tar.gz
+    remote_src: yes
+    dest: "{{ base_dir }}"
+    owner: "{{ ansible_user }}"
+
+- name: Rename extracted Kibana directory
+  ansible.builtin.command:
+    cmd: "mv {{ base_dir }}/kibana-9.1.5 {{ kb_dir }}"
+
+- name: Enroll Kibana
+  block: 
+    - name: Create an enrollment token
+      shell: "{{ es_dir }}/bin/elasticsearch-create-enrollment-token -s kibana"
+      register: kb_token
+
+    - name: Enroll Kibana
+      shell: "{{ kb_dir }}/bin/kibana-setup --enrollment-token {{ kb_token.stdout }}"
+
+- name: Ensure Kibana is externally accessible
+  ansible.builtin.lineinfile:
+    path: "{{ kb_dir }}/config/kibana.yml"
+    regexp: '^\s*server\.host:'
+    line: "server.host: 0.0.0.0"
+    create: yes
+  notify: Restart Kibana
+
+- name: Configure systemd for Kibana
+  copy: 
+    dest: /etc/systemd/system/kibana.service
+    content: | 
+      [Unit]
+      Description=Kibana
+      Documentation=https://www.elastic.co/guide/
+      Wants=network-online.target elasticsearch.service
+      After=network-online.target elasticsearch.service
+
+      [Service]
+      Type=simple
+      User={{ ansible_user }}
+      Group=root
+
+      Environment=KIBANA_HOME=/opt/kibana
+      Environment=KBN_PATH_CONF=/opt/kibana/config
+      WorkingDirectory=/opt/kibana
+
+      ExecStart=/opt/kibana/bin/kibana
+      Restart=on-failure
+      RestartSec=5s
+
+      # Give it some time on first boot / low RAM
+      TimeoutStartSec=600
+
+      # Reasonable limits
+      LimitNOFILE=65535
+
+      [Install]
+      WantedBy=multi-user.target
+  notify: Restart Kibana
+
+- name: Enable systemd unit for Kibana
+  ansible.builtin.systemd_service:
+    name: kibana.service
+    daemon_reload: true
+    state: started
+    enabled: yes
