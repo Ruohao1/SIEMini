@@ -9,8 +9,6 @@ filter {
   # --- Normalize / dataset tag ---
   mutate { add_field => { "event.dataset" => "apache.access" } }
 
-  # Parse example:
-  # Oct 23 02:14:57 172.16.45.135 172.16.45.1 - - [23/Oct/2025:02:14:56 +0000] "GET /rest/user/whoami HTTP/1.1" 200 434 "http://172.16.45.135/" "Mozilla/5.0 ..."
   grok {
     match => {
       "message" => [
@@ -77,7 +75,7 @@ filter {
     match => {
       "[url][query]" => [
         "(?i).*union.*select.*",
-        "(?i).*sleep\\(.*\\).*",   # balanced parens so the engine can relax
+        "(?i).*sleep\\(.*\\).*",
         "(?i).*or\\+1=1.*",
         "(?i).*[;]wget.*",
         "(?i).*[;]curl.*"

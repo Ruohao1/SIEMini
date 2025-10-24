@@ -7,21 +7,6 @@
 # Détection de Brute Force SSH : 15 tentatives de connexion au port 22 en 60 secondes.
 alert tcp $EXTERNAL_NET any -> $HOME_NET 22 (msg:"CUSTOM DETECT - SSH Brute Force (Rate Limit Exceeded)";content:"SSH-2.0-"; detection_filter:track by_src, count 15, seconds 60;classtype:attempted-recon; sid:9000030; rev:1;)
 
-#Rule to to detect possible sql injection using inline comments.
-alert tcp any any -> any any (msg:"Possible SQL Injection — Inline Comments Detected"; flow:to_server,established; content:"GET"; nocase; http_method; content:"/"; http_uri; pcre:"/\?.*( — |#|\/\*)/"; sid:1000001;)
-
-#Rule to detect boolean based sql injection
-alert tcp any any -> any any (msg:"Possible Boolean-based Blind SQL Injection Attempt"; flow:to_server,established; content:"GET"; nocase; http_method; content:"/"; http_uri; pcre:"/\?.*(\bselect\b|\bunion\b|\band\b|\bor\b)(?:[^=]*=){2}[^&]*’/i"; sid:1000002;)
-
-#Rule to detect manual injection
-alert tcp any any -> any 80 (msg:"Possible SQL Injection — UNION keyword detected"; flow:to_server,established; content:"UNION"; nocase; http_uri; sid:1000003;)
-
-#Rule to detect manual injectin using the word or
-alert tcp any any -> any 80 (msg:"Possible Manual Injection detected"; flow:to_server,established; content:"GET"; http_method; content:"?parameter=malicious_keyword"; http_uri; sid:1000004;)
-#Test
-# 1. Détection de l'Évasion Classique (OR 1=1 --)
-# 1. Détection de l'Évasion Classique (OR 1=1 --) Ciblée sur index.php
-alert tcp $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (msg:"CUSTOM SQLi - Classic OR 1=1 Evasion Attempt on index.php";uricontent:"/index.php"; nocase;uricontent:"|27 20|or|20 31 3d 31|";nocase;uricontent:"--";nocase;http_uri;classtype:web-application-attack;sid:9000070; rev:2;)
 
 #Scan NMAP
 #alert tcp $EXTERNAL_NET any -> $HOME_NET any (msg:"CUSTOM SCAN - Nmap SYN Scan (-sS) Detected";flow:stateless; flags:S,12;classtype:attempted-recon; sid:9000050; rev:1;)
@@ -35,29 +20,26 @@ alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"LOCAL XSS attempt
 alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"LOCAL XSS attempt index.php id param contains encoded %3C...%3E (reflected)";flow:to_server,established; uricontent:"/index.php"; nocase; uricontent:"id="; http_uri; nocase;pcre:"/id\s*=\s*(?:[^&]*)(?:%3[cC][0-9A-Fa-f]*%3[eE])/Ui";classtype:web-application-attack; sid:1000006522; rev:1;)
 alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"LOCAL XSS attempt index.php id param common encodings (permissive)";uricontent:"/index.php"; nocase; uricontent:"id="; http_uri; nocase;pcre:"/id(?:=|\%3D)\s*(?:[^&]*?)(?:<|%3[cC])[^&]{1,512}(?:>|%3[eE])/Ui";classtype:web-application-attack; sid:1000006523; rev:1;)
 alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"LOCAL XSS reflected in URI param - literal <...>";flow:to_server,established; uricontent:"=";http_uri; nocase;pcre:"/=[^&]{0,512}<[^>]{1,512}>/Ui";classtype:web-application-attack; sid:100000700; rev:1;)
-# Detect literal <script> in POST body
 alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"XSS POST literal <script> in body"; content:"<script"; http_client_body; nocase; classtype:web-application-attack; sid:1100003; rev:1;)
-
-# Detect encoded %3Cscript in POST body
 alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"XSS POST encoded %3Cscript in body"; content:"%3C"; http_client_body; nocase; pcre:"/%3[cC].*script/Ui"; classtype:web-application-attack; sid:1100004; rev:1;)
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"XSS Modern Search - Encoded Iframe in URI/Path"; flow:to_server,established; uricontent:"%3Ciframe"; nocase; classtype:web-application-attack; sid:100000701; rev:1;)
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"XSS Modern Search - Encoded JS ALERT in URI/Path"; flow:to_server,established; uricontent:"javascript%3aalert"; nocase; classtype:web-application-attack; sid:100000702; rev:1;)
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"ALERTE [XSS Reconnaissance]: Multiples requetes de recherche q= sur le path racine"; flow:to_server,established; uricontent:"/"; uricontent:"q="; nocase; threshold:type threshold, track by_src, count 10, seconds 60; classtype:web-application-attack; sid:100000703; rev:1;)
 
 
-# 2004001 - Rafale SYN vers 21 (scan/rafale de connexion vers FTP)
+#Détection de Brute Force FTP
 alert tcp $EXTERNAL_NET any -> $HOME_NET 21 (msg:"FTP Potential scan / SYN flood to port 21"; flags:S; threshold:type both, track by_src, count 20, seconds 60; classtype:network-scan; sid:2004001; rev:1;)
-
-# 2004002 - Trop de connexions / tentatives TCP vers FTP (multiples établies)
 alert tcp $EXTERNAL_NET any -> $HOME_NET 21 (msg:"FTP Multiple connection attempts (possible brute-force)"; threshold:type both, track by_src, count 10, seconds 60; classtype:attempted-recon; sid:2004002; rev:1;)
-
-# 2004003 - Trop de commandes USER envoyées vers le serveur FTP (client->server)
-# content doit venir avant flow/http etc. Ici on utilise flow pour to_server et established.
 alert tcp $EXTERNAL_NET any -> $HOME_NET 21 (msg:"FTP USER commands burst - possible brute-force"; flow:to_server,established; content:"USER "; nocase; threshold:type both, track by_src, count 8, seconds 60; classtype:attempted-admin; sid:2004003; rev:1;)
-
-# 2004004 - Trop de commandes PASS envoyées vers le serveur FTP (client->server)
 alert tcp $EXTERNAL_NET any -> $HOME_NET 21 (msg:"FTP PASS commands burst - possible brute-force"; flow:to_server,established; content:"PASS "; nocase; threshold:type both, track by_src, count 8, seconds 60; classtype:attempted-admin; sid:2004004; rev:1;)
-
-# 2004005 - Trop de réponses '530' (authentication failure) renvoyées au client (server->client)
 alert tcp $HOME_NET 21 -> $EXTERNAL_NET any (msg:"FTP multiple 530 Authentication Failure responses - possible brute-force"; flow:to_client,established; content:"530 "; nocase; threshold:type both, track by_dst, count 5, seconds 60; classtype:attempted-admin; sid:2004005; rev:1;)
-
-# 2004006 - Tentative d'Anonymous login (USER anonymous / PASS anonymous) — intérêt pour policy
 alert tcp $EXTERNAL_NET any -> $HOME_NET 21 (msg:"FTP Anonymous login attempt (USER/PASS anonymous)"; flow:to_server,established; content:"USER anonymous"; nocase; classtype:policy-violation; sid:2004006; rev:1;)
 alert tcp $EXTERNAL_NET any -> $HOME_NET 21 (msg:"FTP Anonymous login attempt (PASS anonymous)"; flow:to_server,established; content:"PASS anonymous"; nocase; classtype:policy-violation; sid:2004007; rev:1;)
+
+#Détection Brute Force SMB
+alert tcp any any -> $HOME_NET 445 (msg:"ALERTE [Brute Force SMB]: Tentative de Force Brute NTLM detectee !"; flow:to_server; content:"NTLMSSP"; threshold:type threshold, track by_src, count 30, seconds 5; sid:1100005; rev:1;)
+alert tcp any any -> $HOME_NET 445 (msg:"ALERTE [Brute Force SMB]: Tentative de connexion NTLM/SMB - Echec detectee (Session Setup)"; flow:to_server; content:"|74 00 00 00 00 00 00 00|"; threshold:type threshold, track by_src, count 30, seconds 5; sid:1100006; rev:1;)
+alert tcp $EXTERNAL_NET any -> $HOME_NET 445 (msg:"SMB Potential brute-force/scan - many SYNs to 445"; flags:S; threshold:type both, track by_src, count 20, seconds 60; classtype:network-scan; sid:140000001; rev:1;) 
+alert tcp $HOME_NET 445 -> $EXTERNAL_NET any (msg:"ALERTE [Brute Force SMB]: Echec d'authentification repete (STATUS_LOGON_FAILURE)"; flow:to_client,established; content:"|6D 00 00 C0|"; offset:4; depth:4; threshold:type threshold, track by_src, count 30, seconds 5; sid:1100009; rev:1;)
+alert tcp $HOME_NET 445 -> $EXTERNAL_NET any (msg:"ALERTE [Brute Force SMB]: Reponse d'echec de Session (SMBv1/NT Status) detectee"; flow:to_client,established; content:"|FF 53 4D 42|"; offset:4; depth:4; content:"|6D 00 00 C0|"; distance:0; threshold:type threshold, track by_src, count 30, seconds 5; sid:1100010; rev:1;)
+alert tcp $HOME_NET 445 -> $EXTERNAL_NET any (msg:"ALERTE [Brute Force SMB]: Reponse d'echec de Session (TRES LARGE)"; flow:to_client,established; content:"|FF 53 4D 42|"; offset:4; depth:4; content:"|6D 00 00 C0|"; distance:1; within:50; threshold:type threshold, track by_src, count 30, seconds 5; sid:1100011; rev:2;)

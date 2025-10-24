@@ -39,6 +39,36 @@
     state: present
   with_items: "{{ apt_dependencies }}"
 
+- name: Enable FTP
+  ansible.builtin.systemd_service:
+    name: vsftpd
+    state: started
+    enabled: yes
+
+- name: Configure FTP
+  ansible.builtin.template:
+    src: vsftpd.conf
+    dest: /etc/vsftpd.conf
+
+- name: Configure Samba
+  block:
+    - name: Ensure dir 
+      file:
+        name: /srv/samba/test_snort
+        owner: "{{ ansible_user }}"
+        group: root
+        mode: '0777'
+    
+    - name: Restart smbd
+      ansible.builtin.systemd_service:
+        name: smbd
+        state: restarted
+        enabled: yes
+
+    - name: Samba pass
+      command: "echo 'ruohao' | smbpasswd -s -a {{ ansible_user }}"
+    
+
 - name: Download and install nvm
   shell: |
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash

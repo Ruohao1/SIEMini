@@ -64,7 +64,7 @@
           - pipeline.id: snort_alerts
             path.config: "{{ ls_pipelines_dir }}/snort_alerts.conf"
 
-    - name: Logstash snort alerts configuration
+    - name: Logstash config
       ansible.builtin.template:
         dest: "{{ ls_pipelines_dir }}/snort_alerts.conf"
         src: templates/snort_alerts.conf.j2
@@ -73,7 +73,5 @@
       ansible.builtin.shell: |
         . {{ es_dir }}/config/.env
         sed -i "s/ELASTIC_PASSWORD/$ES_PASSWORD/g" {{ ls_pipelines_dir }}/snort_alerts.conf
-      args:
-        executable: /bin/bash
-  notify: Restart Logstash
 
+  notify: Restart Logstash

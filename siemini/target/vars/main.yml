@@ -19,3 +19,5 @@ apt_dependencies:
   - apache2
   - syslog-ng
   - openjdk-17-jre-headless
+  - vsftpd
+  - samba

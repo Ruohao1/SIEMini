@@ -7,6 +7,10 @@
   tags: install_snort
   import_tasks: tasks/install_snort3.yml
 
+- name: Configure Snort3
+  tags: configure_snort
+  import_tasks: tasks/configure_snort3.yml
+
 - name: Install ElasticSearch
   tags: install_elasticsearch
   import_tasks: tasks/install_elasticsearch.yml

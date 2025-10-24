@@ -1,14 +1,14 @@
-# - name: Install Logstash
-#   block:
-#     - name: Download Logstash
-#       unarchive: 
-#         src: https://artifacts.elastic.co/downloads/logstash/logstash-9.1.5-linux-x86_64.tar.gz
-#         remote_src: yes
-#         dest: /opt
-#         owner: "{{ ansible_user }}"
-#
-#     - name: Rename extracted Logstash directory
-#       command: "mv /opt/logstash-9.1.5 {{ ls_dir }}"
+- name: Install Logstash
+  block:
+    - name: Download Logstash
+      unarchive: 
+        src: https://artifacts.elastic.co/downloads/logstash/logstash-9.1.5-linux-x86_64.tar.gz
+        remote_src: yes
+        dest: /opt
+        owner: "{{ ansible_user }}"
+
+    - name: Rename extracted Logstash directory
+      command: "mv /opt/logstash-9.1.5 {{ ls_dir }}"
 
 - name: Install systemd unit for Logstash
   copy:

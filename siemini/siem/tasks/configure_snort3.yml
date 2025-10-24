@@ -1,0 +1,79 @@
+- name: Choose Snort interface (default-route iface, else first non-loopback with IPv4)
+  ansible.builtin.set_fact:
+    snort_iface: >-
+      {{
+        (ansible_facts.default_ipv4.interface
+          | default((ansible_facts.interfaces | difference(['lo'])) | first))
+      }}
+
+- name: debug
+  debug:
+    var: snort_iface
+
+- name: Ensure chosen interface has IPv4 facts
+  ansible.builtin.set_fact:
+    iface_ipv4: "{{ ansible_facts['ansible_' + snort_iface].ipv4 | default(omit) }}"
+  failed_when: iface_ipv4 is not defined
+
+- name: debug
+  debug:
+    var: iface_ipv4
+
+- name: Compute HOME_NET CIDR using Python stdlib (no external modules)
+  ansible.builtin.shell: |
+    python3 - <<'PY'
+    import json, ipaddress
+    ip = "{{ iface_ipv4.address }}"
+    mask = "{{ iface_ipv4.netmask }}"
+    net = ipaddress.ip_network(f"{ip}/{mask}", strict=False)
+    print(json.dumps({"cidr": f"{net.network_address}/{net.prefixlen}"}))
+    PY
+  args:
+    executable: /bin/bash
+  register: home_json
+  changed_when: false
+
+- name: Set HOME_NET fact
+  ansible.builtin.set_fact:
+    snort_home_net: "{{ (home_json.stdout | from_json).cidr }}"
+
+- name: debug
+  debug:
+    var: snort_home_net
+
+# - name: Locate Snort defaults file
+#   stat:
+#     path: /etc/snort/snort.debian.conf
+#   register: snort_debian_conf
+#
+# - name: Set path to Snort defaults file
+#   set_fact:
+#     snort_defaults_file: "{{ snort_debian_conf.stat.exists | ternary('/etc/snort/snort.debian.conf', '/etc/default/snort') }}"
+#
+# - name: Ensure DEBIAN_SNORT_INTERFACE is set
+#   ansible.builtin.lineinfile:
+#     path: "{{ snort_defaults_file }}"
+#     regexp: '^DEBIAN_SNORT_INTERFACE='
+#     line: 'DEBIAN_SNORT_INTERFACE="{{ snort_iface }}"'
+#     create: no
+#     backrefs: no
+#   notify: Restart snort
+#
+# - name: Ensure DEBIAN_SNORT_HOME_NET is set
+#   ansible.builtin.lineinfile:
+#     path: "{{ snort_defaults_file }}"
+#     regexp: '^DEBIAN_SNORT_HOME_NET='
+#     line: 'DEBIAN_SNORT_HOME_NET="{{ snort_home_net }}"'
+#     create: no
+#     backrefs: no
+#   notify: Restart snort
+#
+# - name: Ensure DEBIAN_SNORT_OPTIONS exists (keep empty by default)
+#   ansible.builtin.lineinfile:
+#     path: "{{ snort_defaults_file }}"
+#     regexp: '^DEBIAN_SNORT_OPTIONS='
+#     line: 'DEBIAN_SNORT_OPTIONS=""'
+#     create: no
+#     backrefs: no
+#   notify: Restart snort
+#

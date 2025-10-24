@@ -53,3 +53,7 @@
     name: snort
     state: restarted
 
+- name: Restart snort
+  ansible.builtin.service:
+    name: snort
+    state: restarted

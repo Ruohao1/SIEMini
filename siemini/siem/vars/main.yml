@@ -16,7 +16,7 @@ ls_dir: "{{ base_dir }}/logstash"
 ls_pipelines_dir: "{{ ls_dir }}/config/pipelines"
 
 apt_dependencies:
- - build-essential
+  - build-essential
   - cmake
   - make
   - gcc
